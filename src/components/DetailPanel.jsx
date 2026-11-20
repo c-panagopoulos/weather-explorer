@@ -57,13 +57,17 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
       (location.source === 'geo' ? ' · your location' : '')
     : describeNearest(location.lat, location.lon) || formatCoords(location.lat, location.lon)
 
-  // Points picked on the map borrow the photo of the nearest city (within 150 km).
+  // Points picked on the map borrow a photo: of the nearest city within
+  // 300 km, otherwise of that city's country or region (e.g. remote parts of
+  // Canada or Greenland), up to 1050 km away (beyond that it is usually open sea).
   const near = location.name ? null : nearestPlace(location.lat, location.lon)
   const photoPlace = location.name
     ? location
-    : near && near.km < 150
-      ? { name: near.place.name, admin1: '', country: near.place.country, nearby: true }
-      : null
+    : !near || near.km >= 1050
+      ? null
+      : near.km < 300
+        ? { name: near.place.name, admin1: '', country: near.place.country, nearby: 'city' }
+        : { name: near.place.country, admin1: '', country: '', nearby: 'region' }
 
   const current = data?.current
   // With the time slider moved, the big number and condition show that hour.

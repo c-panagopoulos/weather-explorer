@@ -88,7 +88,11 @@ export default function WeatherScene({ place, effect, isDay, children }) {
       <div className="scene__content">{children}</div>
       {showPhoto && (
         <figcaption className="scene__credit">
-          {place.nearby ? `Photo of ${place.name}, nearest city: ` : 'Photo: '}
+          {place.nearby === 'city'
+            ? `Photo of ${place.name}, nearest city: `
+            : place.nearby === 'region'
+              ? `Photo of ${place.name}: `
+              : 'Photo: '}
           <a href={photo.pageUrl} target="_blank" rel="noreferrer">
             {photo.source}
             <span className="sr-only"> (opens in a new tab)</span>

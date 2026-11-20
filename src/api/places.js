@@ -3,7 +3,7 @@ import { cachedFetch } from './cache.js'
 const DAY = 24 * 60 * 60 * 1000
 
 // Lead images that make poor backgrounds: maps, flags, emblems, collages.
-const NOT_A_VIEW = /map|flag|coat_of_arms|coat of arms|seal|logo|locator|diagram|emblem/i
+const NOT_A_VIEW = /map|flag|coat_of_arms|coat of arms|seal|logo|locator|diagram|emblem|orthographic|projection|\.svg/i
 const COLLAGE = /montage|collage|mosaic|composite/i
 const NIGHT = /night|nocturn|by_night|illuminated/i
 
