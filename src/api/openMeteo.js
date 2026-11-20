@@ -8,7 +8,7 @@ const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search'
 const WEATHER_TTL = 15 * 60 * 1000
 const SEARCH_TTL = 24 * 60 * 60 * 1000
 // How many locations we send in one multi-location request.
-const BATCH_SIZE = 50
+const BATCH_SIZE = 100
 
 async function getJson(url) {
   let res

@@ -54,7 +54,7 @@ function WeatherGrid({ unit, onSelect, onSummary, onLoading }) {
       const small = map.getSize().x < 640
       const { points } = gridPoints(
         { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
-        { columns: small ? 4 : 7, maxPoints: small ? 28 : 48 },
+        { maxPoints: small ? 30 : 60 },
       )
       const id = ++requestId.current
       onLoading(true)

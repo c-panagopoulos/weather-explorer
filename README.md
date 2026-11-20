@@ -58,8 +58,8 @@ Geolocation only works on `localhost` or over HTTPS, a browser rule. The live de
 
 The brief asks to be careful with requests. All weather calls go through one small cache layer (`src/api/cache.js`):
 
-- **Multi-location batching.** The map overview asks for up to 48 points (28 on phones) in **one** request, using Open-Meteo's comma-separated coordinates. Saved places reuse the same batched call.
-- **Snapped grid.** Grid points sit on fixed multiples of the grid step (for example every 5° at world zoom), not on the screen. Small pans therefore land on points that are already cached, and only the new edge is fetched.
+- **Multi-location batching.** The map overview asks for up to 60 points (30 on phones) in **one** request, using Open-Meteo's comma-separated coordinates. Saved places reuse the same batched call.
+- **Snapped grid.** Grid points sit on fixed multiples of the grid step (for example every 2° over a country, 30° over the whole world), not on the screen. Small pans therefore land on points that are already cached, and only the new edge is fetched.
 - **15-minute TTL cache.** This matches how often Open-Meteo updates current conditions, so cached data is never staler than the source. Forecasts are cached per location, rounded to 2 decimals (about 1 km), so nearby clicks share an entry.
 - **In-flight de-duplication.** Two components asking for the same thing at the same moment share one request.
 - **Debouncing.** Map moves wait 450 ms after the user stops moving. Search waits 300 ms after typing stops and needs at least 2 characters. Search results are cached for a day.

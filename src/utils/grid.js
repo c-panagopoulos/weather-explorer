@@ -2,7 +2,7 @@
 // of the map that is visible. Points are snapped to fixed multiples of the
 // grid step, so panning reuses cached points instead of fetching new ones.
 
-const STEPS = [0.25, 0.5, 1, 2, 3, 5, 10, 15, 20, 30]
+const STEPS = [0.25, 0.5, 1, 2, 3, 5, 10, 15, 20, 30, 45]
 
 const wrapLon = (lon) => ((((lon + 180) % 360) + 360) % 360) - 180
 const tidy = (n) => Math.round(n * 1e4) / 1e4
@@ -14,14 +14,16 @@ const tidy = (n) => Math.round(n * 1e4) / 1e4
  *          `lon` is the real longitude (used for the API), `displayLon` keeps the
  *          marker on the copy of the world the user is looking at.
  */
-export function gridPoints(bounds, { columns = 7, maxPoints = 48 } = {}) {
+export function gridPoints(bounds, { maxPoints = 60 } = {}) {
   const south = Math.max(bounds.south, -80)
   const north = Math.min(bounds.north, 80)
   const west = bounds.west
   const east = Math.min(bounds.east, bounds.west + 360)
   if (north <= south || east <= west) return { step: 0, points: [] }
 
-  const wanted = (east - west) / columns
+  // Start from the step that would spread `maxPoints` evenly over the
+  // visible area, then grow it until the grid fits the budget.
+  const wanted = Math.sqrt(((east - west) * (north - south)) / maxPoints)
   let index = STEPS.findIndex((s) => s >= wanted)
   if (index === -1) index = STEPS.length - 1
 

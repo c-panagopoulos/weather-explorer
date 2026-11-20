@@ -7,9 +7,9 @@ import { normalizeForecast } from '../api/openMeteo.js'
 
 describe('gridPoints', () => {
   it('covers the visible area without exceeding the point budget', () => {
-    const { points } = gridPoints({ south: -60, west: -180, north: 80, east: 180 }, { maxPoints: 48 })
+    const { points } = gridPoints({ south: -60, west: -180, north: 80, east: 180 }, { maxPoints: 60 })
     expect(points.length).toBeGreaterThan(0)
-    expect(points.length).toBeLessThanOrEqual(48)
+    expect(points.length).toBeLessThanOrEqual(60)
     for (const p of points) {
       expect(p.lat).toBeGreaterThan(-60)
       expect(p.lat).toBeLessThan(80)
