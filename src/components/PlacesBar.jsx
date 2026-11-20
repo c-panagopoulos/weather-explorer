@@ -197,7 +197,9 @@ export default function PlacesBar({
                               <CountUp
                                 to={Math.round(toUnit(p.w.temperature, unit))}
                                 from={Math.round(toUnit(p.w.temperature, unit))}
-                                duration={0.6}
+                                mode="roll"
+                                easing="spring"
+                                duration={0.8}
                                 trigger="load"
                                 suffix="°"
                               />

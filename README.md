@@ -59,7 +59,7 @@ Copied into `src/components/bits/`, plain-CSS variants, under React Bits' **MIT 
 
 | Component | Where | Notes |
 | --- | --- | --- |
-| **CountUp** | The big temperature in the details; the *Now* chips in My places | The animated copy is `aria-hidden`; screen readers get the final value from sr-only text. It skips the animation with reduced motion. |
+| **CountUp** (roll mode) | The big temperature in the details; the *Now* chips in My places. Digits roll when a place opens or the time slider changes the hour | The animated copy is `aria-hidden`; screen readers get the final value from sr-only text. It skips the animation with reduced motion. |
 | **Elastic Slider** | The timeline | `role="slider"` with arrow keys, Page Up/Down, Home/End, `aria-valuetext` ("6 hours from now") and a focus ring. Changes: removed its `@hugeicons` default icons (no extra dependency), and fixed an animation-frame id that was not reset on unmount, which froze the fill after a React StrictMode remount. |
 | **Spotlight Card** | The legend card, the My places dropdown and the details panel | A faint glow that follows the cursor. Only on pointer devices (`hover: hover`), and off with reduced motion. |
 

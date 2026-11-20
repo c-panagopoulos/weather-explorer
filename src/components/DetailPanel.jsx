@@ -120,7 +120,15 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
           <div className="now">
             <span className="now__temp">
               <span aria-hidden="true">
-                <CountUp key={key} to={Math.round(toUnit(shown.temperature, unit))} duration={0.6} trigger="load" suffix="°" />
+                <CountUp
+                  key={key}
+                  mode="roll"
+                  easing="spring"
+                  to={Math.round(toUnit(shown.temperature, unit))}
+                  duration={0.9}
+                  trigger="load"
+                  suffix="°"
+                />
               </span>
               <span className="sr-only">
                 {at ? `In ${hour} hours: ` : ''}
