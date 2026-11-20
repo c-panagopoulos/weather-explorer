@@ -1,13 +1,29 @@
 import { describeWeather } from '../utils/weatherCodes.js'
 import { formatHour, formatTemp, toUnit } from '../utils/format.js'
 
-const W = 640
-const H = 170
-const PAD = { top: 28, right: 12, bottom: 34, left: 12 }
+const W = 404
+const H = 140
+const PAD = { left: 16, right: 16, top: 30, bottom: 26 }
+
+// Catmull-Rom spline through the points, written as cubic Bézier segments.
+function smoothPath(pts) {
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? p2
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]
+    d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`
+  }
+  return d
+}
 
 /**
- * 24-hour temperature line with rain-chance bars. The SVG is a visual
- * summary; screen-reader users get the same data as a real table.
+ * 24-hour temperature curve with rain-chance bars. Labels are HTML spans laid
+ * over the SVG (so they scale with the text, not the drawing). Screen-reader
+ * users get a summary label plus the same data as a real table.
  */
 export default function HourlyChart({ hours, unit }) {
   if (!hours.length) return null
@@ -15,19 +31,20 @@ export default function HourlyChart({ hours, unit }) {
   const min = Math.min(...temps)
   const max = Math.max(...temps)
   const span = Math.max(max - min, 1)
-  const innerW = W - PAD.left - PAD.right
   const innerH = H - PAD.top - PAD.bottom
-  const x = (i) => PAD.left + (i / (hours.length - 1)) * innerW
-  const y = (t) => PAD.top + (1 - (t - min) / span) * innerH * 0.8
-  const line = temps.map((t, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(t).toFixed(1)}`).join(' ')
-  const area = `${line} L${x(hours.length - 1)},${H - PAD.bottom} L${x(0)},${H - PAD.bottom} Z`
-  const hi = temps.indexOf(max)
+  const x = (i) => PAD.left + (i / (hours.length - 1)) * (W - PAD.left - PAD.right)
+  const y = (t) => PAD.top + (1 - (t - min) / span) * innerH
+  const pts = temps.map((t, i) => [x(i), y(t)])
   const lo = temps.indexOf(min)
+  const hi = temps.indexOf(max)
+  const labels = hours.map((h, i) => ({ h, i })).filter(({ i }) => i % 4 === 0)
 
   return (
     <section className="hourly" aria-labelledby="hourly-title">
-      <h3 id="hourly-title">Next 24 hours</h3>
-      <div className="hourly__scroll">
+      <h3 id="hourly-title" className="eyebrow">
+        Next 24 hours
+      </h3>
+      <div className="hourly__plot">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="hourly__svg"
@@ -35,43 +52,28 @@ export default function HourlyChart({ hours, unit }) {
           aria-label={`Temperature over the next 24 hours, from ${formatTemp(hours[lo].temperature, unit, { withUnit: true })} at ${formatHour(hours[lo].time)} to ${formatTemp(hours[hi].temperature, unit, { withUnit: true })} at ${formatHour(hours[hi].time)}.`}
         >
           {hours.map((h, i) => {
-            const barH = ((h.precipitationProbability ?? 0) / 100) * (innerH * 0.6)
+            const barH = ((h.precipitationProbability ?? 0) / 100) * innerH * 0.55
             return (
-              <rect
-                key={`p${h.time}`}
-                className="hourly__rain"
-                x={x(i) - 4}
-                y={H - PAD.bottom - barH}
-                width="8"
-                height={barH}
-                rx="2"
-              />
+              <rect key={h.time} className="hourly__rain" x={x(i) - 2} y={H - PAD.bottom - barH} width="4" height={barH} rx="2" />
             )
           })}
-          <path d={area} className="hourly__area" />
-          <path d={line} className="hourly__line" />
-          {hours.map((h, i) =>
-            i % 3 === 0 ? (
-              <g key={h.time}>
-                <circle cx={x(i)} cy={y(temps[i])} r="3.5" className="hourly__dot" />
-                <text x={x(i)} y={y(temps[i]) - 9} textAnchor="middle" className="hourly__temp">
-                  {Math.round(temps[i])}°
-                </text>
-                <text x={x(i)} y={H - PAD.bottom + 16} textAnchor="middle" className="hourly__label">
-                  {i === 0 ? 'Now' : formatHour(h.time)}
-                </text>
-                <text x={x(i)} y={H - 4} textAnchor="middle" className="hourly__icon">
-                  {describeWeather(h.code, h.isDay).icon}
-                </text>
-              </g>
-            ) : null,
-          )}
+          <path d={smoothPath(pts)} className="hourly__line" />
+          {labels.map(({ i }) => (
+            <circle key={i} cx={pts[i][0]} cy={pts[i][1]} r="2.5" className="hourly__dot" />
+          ))}
+          <circle cx={pts[0][0]} cy={pts[0][1]} r="6" className="hourly__now" />
         </svg>
+        {labels.map(({ h, i }) => (
+          <span key={`t${i}`} aria-hidden="true" className="hourly__temp" style={{ left: `${(pts[i][0] / W) * 100}%`, top: `${((pts[i][1] - 6) / H) * 100}%` }}>
+            {Math.round(temps[i])}°
+          </span>
+        ))}
+        {labels.map(({ h, i }) => (
+          <span key={`h${i}`} aria-hidden="true" className="hourly__hour" style={{ left: `${(pts[i][0] / W) * 100}%` }}>
+            {i === 0 ? 'Now' : formatHour(h.time)}
+          </span>
+        ))}
       </div>
-      <p className="hourly__legend">
-        <span className="legend-swatch legend-swatch--line" aria-hidden="true" /> Temperature
-        <span className="legend-swatch legend-swatch--rain" aria-hidden="true" /> Chance of rain
-      </p>
       <table className="sr-only">
         <caption>Hourly forecast</caption>
         <thead>

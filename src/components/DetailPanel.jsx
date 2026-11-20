@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { fetchForecast } from '../api/openMeteo.js'
+import { fetchForecast, pointKey } from '../api/openMeteo.js'
 import { useAsync } from '../hooks/useAsync.js'
 import { describeWeather } from '../utils/weatherCodes.js'
 import {
@@ -10,11 +10,34 @@ import {
   formatTemp,
   formatWind,
   placeLabel,
+  toUnit,
 } from '../utils/format.js'
+import { tempCss } from '../data/palette.js'
 import WeatherScene from './WeatherScene.jsx'
 import HourlyChart from './HourlyChart.jsx'
 
-export default function DetailPanel({ location, unit, isSaved, onToggleSave, onClose }) {
+// "2° warmer than Lisbon · 9° colder than Cairo": the closest warmer and colder saved places.
+function compareLine(location, temperature, places, placesWeather, unit) {
+  const me = toUnit(temperature, unit)
+  const others = places
+    .filter((p) => p.id !== location.id)
+    .map((p) => ({ name: p.name, w: placesWeather.get(pointKey(p)) }))
+    .filter((o) => o.w)
+    .map((o) => ({ name: o.name, d: Math.round(me - toUnit(o.w.temperature, unit)) }))
+  const same = others.find((o) => o.d === 0)
+  const warmer = others.filter((o) => o.d > 0).sort((a, b) => a.d - b.d)[0]
+  const colder = others.filter((o) => o.d < 0).sort((a, b) => b.d - a.d)[0]
+  return [
+    same && `Same as ${same.name}`,
+    warmer && `${warmer.d}° warmer than ${warmer.name}`,
+    colder && `${-colder.d}° colder than ${colder.name}`,
+  ]
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(' · ')
+}
+
+export default function DetailPanel({ location, unit, isSaved, places, placesWeather, onToggleSave, onClose, onShare }) {
   const headingRef = useRef(null)
   const key = `${location.lat.toFixed(2)},${location.lon.toFixed(2)}`
   const { data, error, loading } = useAsync(() => fetchForecast(location.lat, location.lon), key)
@@ -26,21 +49,25 @@ export default function DetailPanel({ location, unit, isSaved, onToggleSave, onC
 
   const title = location.name ?? (location.source === 'geo' ? 'Your location' : 'Selected point')
   const subtitle = location.name
-    ? [location.admin1 !== location.name ? location.admin1 : '', location.country].filter(Boolean).join(', ')
+    ? [location.admin1 !== location.name ? location.admin1 : '', location.country].filter(Boolean).join(', ') +
+      (location.source === 'geo' ? ' · your location' : '')
     : formatCoords(location.lat, location.lon)
 
   const current = data?.current
   const weather = current ? describeWeather(current.code, current.isDay) : null
   const today = data?.daily[0]
+  const vs = current ? compareLine(location, current.temperature, places, placesWeather, unit) : ''
+  const weekMin = data ? Math.min(...data.daily.map((d) => d.min)) : 0
+  const weekMax = data ? Math.max(...data.daily.map((d) => d.max)) : 1
+  const pos = (t) => ((t - weekMin) / Math.max(weekMax - weekMin, 1)) * 100
 
   return (
-    <aside className="panel" aria-labelledby="panel-title" aria-busy={loading}>
-      <div className="panel__grip" aria-hidden="true" />
+    <aside className="panel" aria-labelledby="panel-title" aria-busy={loading} data-obstacle>
+      <span className="panel__grip" aria-hidden="true" />
       <WeatherScene place={location.name ? location : null} effect={weather?.effect ?? 'clear'} isDay={current?.isDay ?? true}>
-        <div className="panel__head">
-          <div>
+        <div className="scene__top">
+          <div className="scene__titles">
             <h2 id="panel-title" ref={headingRef} tabIndex={-1}>
-              {location.source === 'geo' && <span aria-hidden="true">📍 </span>}
               {title}
             </h2>
             <p className="panel__sub">{subtitle}</p>
@@ -48,35 +75,41 @@ export default function DetailPanel({ location, unit, isSaved, onToggleSave, onC
           <div className="panel__actions">
             <button
               type="button"
-              className="icon-btn"
+              className={`btn-glass ${isSaved ? 'is-saved' : ''}`}
               aria-pressed={isSaved}
               onClick={onToggleSave}
-              aria-label={isSaved ? `Remove ${title} from my places` : `Save ${title} to my places`}
-              title={isSaved ? 'Remove from my places' : 'Save to my places'}
+              aria-label={isSaved ? `${title} is saved. Remove from my places` : `Save ${title} to my places`}
             >
               <span aria-hidden="true">{isSaved ? '★' : '☆'}</span>
+              {isSaved ? 'Saved' : 'Save'}
             </button>
-            <button type="button" className="icon-btn" onClick={onClose} aria-label="Close details" title="Close">
+            <button type="button" className="btn-glass" onClick={onClose} aria-label="Close details">
               <span aria-hidden="true">✕</span>
+              <span className="btn-glass__text" aria-hidden="true">
+                Close
+              </span>
             </button>
           </div>
         </div>
+
         {current && (
           <div className="now">
-            <span className="now__icon" aria-hidden="true">
-              {weather.icon}
+            <span className="now__temp">
+              {formatTemp(current.temperature, unit)}
+              <span className="sr-only">{unit === 'C' ? ' Celsius' : ' Fahrenheit'}</span>
             </span>
-            <span className="now__temp">{formatTemp(current.temperature, unit, { withUnit: true })}</span>
-            <span className="now__label">
-              {weather.label}
+            <span className="now__meta">
+              <span className="now__cond">{weather.label}</span>
               {today && (
-                <span className="now__range">
+                <span className="now__hl">
                   H {formatTemp(today.max, unit)} · L {formatTemp(today.min, unit)}
                 </span>
               )}
+              {vs && <span className="now__vs">{vs}</span>}
             </span>
           </div>
         )}
+        {data && <HourlyChart hours={data.hourly} unit={unit} />}
       </WeatherScene>
 
       <div className="panel__body">
@@ -89,6 +122,14 @@ export default function DetailPanel({ location, unit, isSaved, onToggleSave, onC
 
         {data && (
           <>
+            <p className="legend">
+              <span className="legend__item">
+                <span className="legend__line" aria-hidden="true" /> Temperature
+              </span>
+              <span className="legend__item">
+                <span className="legend__bar" aria-hidden="true" /> Chance of rain
+              </span>
+            </p>
             <dl className="stats">
               <div>
                 <dt>Feels like</dt>
@@ -105,50 +146,62 @@ export default function DetailPanel({ location, unit, isSaved, onToggleSave, onC
                 </dd>
               </div>
               <div>
-                <dt>Sunrise / sunset</dt>
+                <dt>Sunrise–set</dt>
                 <dd>
-                  {formatHour(today.sunrise)} / {formatHour(today.sunset)}
+                  {formatHour(today.sunrise)}–{formatHour(today.sunset)}
                 </dd>
               </div>
             </dl>
 
-            <HourlyChart hours={data.hourly} unit={unit} />
-
             <section aria-labelledby="daily-title">
-              <h3 id="daily-title">7-day forecast</h3>
+              <h3 id="daily-title" className="eyebrow">
+                7 days
+              </h3>
               <ul className="daily">
-                {data.daily.map((d, i) => {
-                  const w = describeWeather(d.code, true)
-                  return (
-                    <li key={d.date} className="daily__row">
-                      <span className="daily__day">{formatDay(d.date, i)}</span>
-                      <span className="daily__cond">
-                        <span aria-hidden="true">{w.icon}</span> {w.label}
-                      </span>
-                      <span className="daily__rain">
-                        <span className="sr-only">Chance of rain </span>
-                        {d.precipitationProbability ?? 0}%
-                      </span>
-                      <span className="daily__temps">
-                        <span className="sr-only">High </span>
-                        <strong>{formatTemp(d.max, unit)}</strong>
-                        <span className="sr-only">, low </span>
-                        <span aria-hidden="true"> / </span>
-                        {formatTemp(d.min, unit)}
-                      </span>
-                    </li>
-                  )
-                })}
+                {data.daily.map((d, i) => (
+                  <li key={d.date} className="daily__row">
+                    <span className="daily__day">{formatDay(d.date, i)}</span>
+                    <span className="daily__cond">{describeWeather(d.code, true).label}</span>
+                    <span className="daily__rain">
+                      <span className="sr-only">Chance of rain </span>
+                      {d.precipitationProbability ?? 0}%
+                    </span>
+                    <span className="daily__lo">
+                      <span className="sr-only">Low </span>
+                      {formatTemp(d.min, unit)}
+                    </span>
+                    <span className="range__bar" aria-hidden="true">
+                      <span
+                        className="range__fill"
+                        style={{
+                          left: `${pos(d.min)}%`,
+                          width: `${Math.max(pos(d.max) - pos(d.min), 4)}%`,
+                          background: `linear-gradient(90deg, ${tempCss(d.min)}, ${tempCss(d.max)})`,
+                        }}
+                      />
+                    </span>
+                    <span className="daily__hi">
+                      <span className="sr-only">High </span>
+                      {formatTemp(d.max, unit)}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </section>
-            <p className="panel__tz">Local times shown in {data.timezone.replaceAll('_', ' ')}.</p>
+            <div className="panel__foot">
+              <p className="panel__tz">Local times shown in {data.timezone.replaceAll('_', ' ')}.</p>
+              <button type="button" className="btn-outline" onClick={onShare}>
+                <span aria-hidden="true">↗</span> Share link
+              </button>
+            </div>
           </>
         )}
       </div>
 
       {/* Announce the result once it arrives. */}
       <p className="sr-only" role="status" aria-live="polite">
-        {data && `${location.name ? placeLabel(location) : title}: ${formatTemp(current.temperature, unit, { withUnit: true })}, ${weather.label}.`}
+        {data &&
+          `${location.name ? placeLabel(location) : title}: ${formatTemp(current.temperature, unit, { withUnit: true })}, ${weather.label}.`}
       </p>
     </aside>
   )
