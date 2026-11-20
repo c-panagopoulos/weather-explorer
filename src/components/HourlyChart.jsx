@@ -57,7 +57,7 @@ export default function HourlyChart({ hours, unit, hour = 0 }) {
               <rect key={h.time} className="hourly__rain" x={x(i) - 2} y={H - PAD.bottom - barH} width="4" height={barH} rx="2" />
             )
           })}
-          <path d={smoothPath(pts)} className="hourly__line" />
+          <path key={hours[0].time + temps.join(',')} d={smoothPath(pts)} className="hourly__line draw" pathLength="1" />
           {labels.map(({ i }) => (
             <circle key={i} cx={pts[i][0]} cy={pts[i][1]} r="2.5" className="hourly__dot" />
           ))}

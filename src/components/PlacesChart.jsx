@@ -49,7 +49,7 @@ export default function PlacesChart({ series, selectedId, unit, hour }) {
   const pct = (px, total) => `${(px / total) * 100}%`
 
   return (
-    <div className="pchart">
+    <div className="pchart anim-in">
       <p className="places__note">Temperature, next 24 hours{hour ? ' · dashed line = slider time' : ''}</p>
       <div className="pchart__plot">
         <svg
@@ -65,7 +65,16 @@ export default function PlacesChart({ series, selectedId, unit, hour }) {
           {hour > 0 && <line x1={x(hour)} x2={x(hour)} y1={TOP - 2} y2={BOTTOM} className="pchart__hour" />}
           {lines.map((l) => (
             <g key={l.id}>
-              <path d={l.d} fill="none" stroke={l.color} strokeWidth={l.width} opacity={l.opacity} strokeLinejoin="round" />
+              <path
+                d={l.d}
+                className="draw"
+                pathLength="1"
+                fill="none"
+                stroke={l.color}
+                strokeWidth={l.width}
+                opacity={l.opacity}
+                strokeLinejoin="round"
+              />
               <circle cx={l.end[0]} cy={l.end[1]} r="3" fill={l.color} />
             </g>
           ))}

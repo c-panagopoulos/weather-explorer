@@ -16,6 +16,7 @@ import { tempCss } from '../data/palette.js'
 import { describeNearest, nearestPlace } from '../data/places.js'
 import { hourLabel } from './TimeSlider.jsx'
 import WeatherScene from './WeatherScene.jsx'
+import CountUp from './bits/CountUp.jsx'
 import HourlyChart from './HourlyChart.jsx'
 
 // "2° warmer than Lisbon · 9° colder than Cairo": the closest warmer and colder saved places.
@@ -106,7 +107,7 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
         {current && (
           <div className="now">
             <span className="now__temp">
-              {formatTemp(current.temperature, unit)}
+              <CountUp key={key} value={current.temperature} format={(v) => formatTemp(v, unit)} />
               <span className="sr-only">{unit === 'C' ? ' Celsius' : ' Fahrenheit'}</span>
             </span>
             <span className="now__meta">
@@ -173,7 +174,7 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
               <h3 id="daily-title" className="eyebrow">
                 7 days
               </h3>
-              <ul className="daily">
+              <ul className="daily anim-in anim-in--late">
                 {data.daily.map((d, i) => (
                   <li key={d.date} className="daily__row">
                     <span className="daily__day">{formatDay(d.date, i)}</span>

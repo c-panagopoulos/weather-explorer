@@ -4,7 +4,7 @@ import { describeWeather } from '../utils/weatherCodes.js'
 import { formatTemp } from '../utils/format.js'
 import { chipColors, tempCss } from '../data/palette.js'
 import PlacesChart from './PlacesChart.jsx'
-import { hourLabel } from './TimeSlider.jsx'
+import CountUp from './bits/CountUp.jsx'
 
 const SORTS = [
   ['warm', 'Warmest', (a, b) => (b.w?.temperature ?? -999) - (a.w?.temperature ?? -999)],
@@ -70,7 +70,12 @@ export default function PlacesBar({
   const coldest = byTemp[byTemp.length - 1]
 
   return (
-    <section className={`places ${open ? 'is-open' : ''}`} aria-labelledby="places-title" data-obstacle>
+    <section
+      id="places-pop"
+      className={`places ${open ? 'is-open' : ''}`}
+      aria-labelledby="places-title"
+      data-obstacle={open ? '' : undefined}
+    >
       <span className="places__grip" aria-hidden="true" />
       <div className="places__head">
         <div className="places__heading">
@@ -97,7 +102,13 @@ export default function PlacesBar({
               ))}
             </div>
           )}
-          <button type="button" className="btn-outline" aria-expanded={open} aria-controls="places-body" onClick={onToggle}>
+          <button
+            type="button"
+            className="btn-outline places__toggle"
+            aria-expanded={open}
+            aria-controls="places-body"
+            onClick={onToggle}
+          >
             {open ? 'Hide' : places.length ? 'Compare' : 'Show'}
           </button>
         </div>
@@ -135,6 +146,7 @@ export default function PlacesBar({
             </div>
           ) : view === 'chart' ? (
             <PlacesChart
+              key="chart"
               series={rows.filter((r) => r.hours).map((r) => ({ id: r.id, name: r.name, hours: r.hours }))}
               selectedId={selectedId}
               unit={unit}
@@ -144,11 +156,11 @@ export default function PlacesBar({
             <>
               <div className="prow-head" aria-hidden="true">
                 <span>Place</span>
-                <span>{hour ? `At ${hourLabel(hour).slice(-5)}` : 'Now'}</span>
+                <span>{hour ? `+${hour} h` : 'Now'}</span>
                 <span className="prow-head__range">Today low – high</span>
                 <span className="prow-head__rain">Rain</span>
               </div>
-              <ul className="prows">
+              <ul className="prows anim-in" key={`list-${sort}`}>
                 {rows.map((p) => {
                   const chip = p.w ? chipColors(p.w.temperature) : null
                   const cond = p.w ? describeWeather(p.w.code, p.w.isDay).label : 'Loading…'
@@ -167,8 +179,8 @@ export default function PlacesBar({
                           <span className="prow__cond">{cond}</span>
                         </span>
                         <span className="chip-temp" style={chip ? { background: chip.bg, color: chip.fg } : undefined}>
-                          <span className="sr-only">{hour ? `At ${hourLabel(hour)} ` : 'Now '}</span>
-                          {p.w ? formatTemp(p.w.temperature, unit) : '–'}
+                          <span className="sr-only">{hour ? `In ${hour} hours: ` : 'Now: '}</span>
+                          {p.w ? <CountUp value={p.w.temperature} format={(v) => formatTemp(v, unit)} from={p.w.temperature} /> : '–'}
                         </span>
                         <span className="prow__range">
                           <span className="range__lo">

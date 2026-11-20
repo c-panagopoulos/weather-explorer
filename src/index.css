@@ -1588,6 +1588,466 @@ a {
   }
 }
 
+
+/* =================== Design v5 =================== */
+:root {
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (max-width: 899px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+@media (min-width: 900px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Motion */
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+@keyframes slideL {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+button {
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s,
+    transform 0.12s;
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.topbar {
+  animation: in 0.5s var(--ease) 0.05s backwards;
+}
+.mapbar {
+  animation: in 0.5s var(--ease) 0.12s backwards;
+}
+.legend-card {
+  animation: in 0.5s var(--ease) 0.2s backwards;
+}
+.slider {
+  animation: in 0.5s var(--ease) 0.28s backwards;
+}
+.field-layer {
+  animation: fade 1.2s ease 0.1s backwards;
+}
+.is-fresh .ro {
+  animation: fade 0.6s ease 0.45s backwards;
+}
+.toast {
+  animation: in 0.25s var(--ease) both;
+}
+.draw {
+  stroke-dasharray: 1;
+  animation: draw 1s var(--ease) 0.15s both;
+}
+.anim-in {
+  animation: in 0.3s var(--ease) both;
+}
+.anim-in--late {
+  animation-duration: 0.45s;
+  animation-delay: 0.3s;
+}
+
+/* Round 44px "i" button */
+.info-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 17px;
+}
+.info-btn--glass {
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* ---------- Desktop ---------- */
+@media (min-width: 900px) {
+  .places-btn {
+    padding: 0 16px;
+  }
+  .places-btn.is-open {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .places-btn__star {
+    color: var(--accent);
+  }
+  .places-btn__count {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--track);
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .places-btn__caret {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* My places as a dropdown under the top bar */
+  .places {
+    top: 76px;
+    right: 20px;
+    left: auto;
+    bottom: auto;
+    width: 436px;
+    max-height: min(600px, calc(100% - 92px));
+    z-index: 1150;
+    padding: 16px 14px 14px 18px;
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    transform-origin: top right;
+  }
+  .places:not(.is-open) {
+    display: none;
+  }
+  .places.is-open {
+    animation: pop 0.24s var(--ease) both;
+  }
+  .has-panel .places {
+    right: 470px;
+  }
+  .places__toggle {
+    display: none;
+  }
+  .places__head h2 {
+    font-size: 20px;
+    font-weight: 400;
+  }
+  .prow-head,
+  .prow__main {
+    grid-template-columns: minmax(0, 1fr) 50px 124px 40px;
+  }
+
+  .panel {
+    animation: slideL 0.4s var(--ease) both;
+  }
+
+  /* Legend card */
+  .legend-card {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 1000;
+    width: 200px;
+    padding: 12px 14px 10px;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: width 0.25s var(--ease);
+  }
+  .legend-card.is-open {
+    width: 252px;
+  }
+  .legend-card__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .legend-card__head .info-btn {
+    margin: -6px 0 -6px -6px;
+  }
+  .legend-card__head h2 {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .legend-card__when {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: in 0.25s var(--ease) both;
+  }
+  .legend-card__bar {
+    height: 8px;
+    border-radius: 4px;
+  }
+  .legend-card__ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .legend-card__explain {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .legend-card hr {
+    width: 100%;
+    border: 0;
+    height: 1px;
+    background: var(--hairline);
+    margin: 2px 0;
+  }
+  .legend-card__label {
+    font-size: 12px;
+    color: var(--subtle);
+  }
+  .legend-card__spot {
+    display: grid;
+    grid-template-columns: 64px 40px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 6px;
+    margin: 0 -6px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    text-align: left;
+    font-size: 13px;
+  }
+  .legend-card__spot:hover {
+    background: var(--hairline);
+  }
+  .legend-card__word {
+    color: var(--muted);
+  }
+  .legend-card__spot strong {
+    font-size: 15px;
+  }
+  .legend-card__place {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Slim timeline, centred on the free map area */
+  .slider {
+    left: calc(50% - 165px);
+    right: auto;
+    width: 330px;
+    gap: 10px;
+    padding: 4px 16px 4px 4px;
+    border-radius: 999px;
+    transition: left 0.4s var(--ease);
+  }
+  .has-panel .slider {
+    left: calc((100% - 452px) / 2 - 165px);
+    right: auto;
+  }
+  .leaflet-bottom.leaflet-right {
+    bottom: 8px !important;
+  }
+}
+
+.slider__play {
+  font-size: 13px;
+  padding: 0 14px;
+  gap: 6px;
+}
+.slider__label {
+  flex: none;
+  min-width: 48px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.slider input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+}
+
+/* ---------- Mobile ---------- */
+.round-btn {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+@media (max-width: 899px) {
+  .topbar {
+    flex-wrap: nowrap;
+  }
+  .search {
+    flex: 1 1 auto;
+  }
+  .search input {
+    height: 52px;
+  }
+  .search__icon {
+    top: 17px;
+  }
+  .topbar__tools {
+    flex: none;
+    gap: 8px;
+  }
+  .mapbar {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 74px;
+    z-index: 1090;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+  .mapbar > * {
+    pointer-events: auto;
+  }
+  .has-panel .mapbar {
+    display: none;
+  }
+  .legend-chip {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .legend-chip__body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+    animation: in 0.25s var(--ease) both;
+  }
+  .legend-chip__bar {
+    width: 64px;
+    height: 6px;
+    border-radius: 3px;
+  }
+  .layers {
+    position: relative;
+  }
+  .layers__btn {
+    width: 52px;
+    height: 44px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .layers__btn.is-open {
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+  }
+  .layers__caret {
+    font-size: 10px;
+  }
+  .layers__menu {
+    position: absolute;
+    right: 0;
+    top: 50px;
+    width: 190px;
+    padding: 6px;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    transform-origin: top right;
+    animation: pop 0.24s var(--ease) both;
+  }
+  .layers__menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .layers__menu button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+  }
+  .layers__menu button[aria-pressed='true'] {
+    background: var(--invert-bg);
+    color: var(--invert-fg);
+    font-weight: 600;
+  }
+  .layers__menu button[aria-disabled='true'] {
+    color: var(--subtle);
+    cursor: not-allowed;
+  }
+  .layers__note {
+    padding: 6px 12px 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .toast-region {
+    top: 132px;
+  }
+  .places.is-open,
+  .panel {
+    animation: up 0.55s var(--ease) both;
+  }
+}
+
 /* Respect users who ask for less motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1595,6 +2055,7 @@ a {
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }

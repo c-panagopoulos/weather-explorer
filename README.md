@@ -4,13 +4,15 @@ Explore the weather anywhere in the world, like a TV weather forecast where you 
 
 **Live demo:** https://c-panagopoulos.github.io/weather-explorer/
 
-- **See the whole picture first.** The map is covered with a smooth, colour-coded temperature field, in the style of a TV forecast. It follows you as you pan and zoom, so you can see how the weather changes from place to place. Your saved places and about 30 major cities show their values, placed so labels never overlap each other or sit under a panel. The *In view* chip shows the coldest and warmest spot on screen; tap either to open it.
+- **See the whole picture first.** The map is covered with a smooth, colour-coded temperature field, in the style of a TV forecast. It follows you as you pan and zoom, so you can see how the weather changes from place to place. Your saved places and about 30 major cities show their values, placed so labels never overlap each other or sit under a panel. A collapsible legend card explains the colours and links to the coldest and warmest spot on screen.
 - **Dive into any place.** Search for a city, or tap anywhere on the map (including the open sea) to see current conditions, feels-like temperature, humidity, wind, sunrise and sunset, a 24-hour chart and a 7-day forecast with low–high range bars. A line compares it with your saved places ("6° warmer than Lisbon · 7° colder than Cairo"), and *Share link* copies a URL that reopens the same place and unit.
 - **See it, don't just read it.** The details open with a photo of the place (Athens shows the Acropolis). The current weather is animated on top of it: rain, drizzle, snow, fog, drifting clouds, sunshine or lightning. **When it is night there, the scene uses a night photo** (Sydney Harbour Bridge lit up, Shinjuku at night) when one exists, and otherwise darkens the day photo. Points picked on the map borrow the photo of the nearest city.
 - **Build your own picture of the world's weather.** Save a place to add it to *My places*. Each place shows its temperature now, today's low and high on one shared scale, and the chance of rain. You can sort by warmest, coldest, A–Z or the order you added them, and removing a place can be undone. The list is kept in `localStorage`, so it is still there after a reload.
 - **Read the weather anywhere.** A probe follows the mouse and shows the interpolated temperature, the condition and the nearest place ("Near Ioannina, Greece"), named from a bundled list of about 300 cities with no network calls. With the keyboard, focus the map: a crosshair appears, the arrow keys pan, Enter opens the forecast and a live region reads the value out. On phones the ring stays in the centre and you drag the map under it; it snaps to nearby cities.
 - **Look ahead.** A 24-hour time slider (with Play) moves My places and the open place through the forecast; *My places* also has a **Chart** view with every place's next 24 hours in one chart.
 - **Weather where you are.** *My location* uses the browser's geolocation and puts a city name on the result.
+- **Layout:** the map belongs to you. Search, location, units and a *My places* dropdown sit in the top bar; the legend sits bottom left; a slim timeline sits centred on the free map area; the right side is only for the place you open. On phones everything fits one top row, with a small legend chip and a layers menu below it.
+- **Subtle motion:** panels slide or pop in, charts draw themselves, and temperatures count up to their value. All of it turns off with reduced motion.
 - **°C / °F** toggle, remembered between visits. **Dark by default**, with a light theme that follows the system setting.
 
 ## 1. Installation and setup
@@ -45,6 +47,7 @@ Geolocation only works on `localhost` or over HTTPS, a browser rule. The live de
 | **Leaflet + react-leaflet** | A mature, light, free map with no API key. It handles touch, keyboard panning and zoom well. Base map: **Esri Canvas Dark / Light Gray** tiles, which keep the colour field readable. |
 | **Canvas temperature field** | The grid values are interpolated with inverse distance weighting on a coarse canvas, then upscaled with a blur and blended over the tiles. The canvas sits in Leaflet's overlay pane, so it pans with the map at no cost and is redrawn only when movement ends. |
 | **No UI or chart library** | The 24-hour chart is a small hand-written SVG (a Catmull-Rom curve with HTML labels laid over it) and all styling is plain CSS with theme variables. Fewer dependencies, full control over accessibility. Fonts: Hanken Grotesk and IBM Plex Mono from Google Fonts. |
+| **Animations** | Plain CSS keyframes, plus a small `CountUp` component of my own (`src/components/bits/`), inspired by [React Bits](https://reactbits.dev)' CountUp. I did not copy React Bits components or add an animation library, to keep the dependency list and licensing simple. |
 | **Vitest** | Unit tests for the logic that matters most: grid generation, caching, unit conversion, weather-code mapping and forecast normalisation. |
 | **GitHub Actions → GitHub Pages** | Each push to `main` runs the tests, builds and deploys the live demo. |
 
@@ -76,7 +79,9 @@ The brief asks to be careful with requests. All weather calls go through one sma
 - **Mobile first.** On phones the map fills the screen, My places is a peek sheet you can expand ("Compare"), and the details open as a bottom sheet. From 900 px wide they become floating panels. Touch targets are at least 44 px, and the search input uses 16 px text so iOS does not zoom in on focus.
 - **Keyboard.** Every feature works without a mouse. The search box follows the WAI-ARIA **combobox** pattern (arrow keys, Enter, Escape). Leaflet supports arrow-key panning and +/− zoom. Saved-place values on the map are focusable and labelled ("Saved place: Lisbon, 17°C, Overcast"); city values are display only, so they are not tab stops. In search, Escape first closes the list, then clears the text. Elsewhere it closes the details. A *skip link* jumps to My places, and focus rings are clearly visible.
 - **Screen readers.** In the details and My places, weather is never conveyed by colour alone: there is always a text label. Live regions announce search results and the loaded weather ("Athens: 22°C, Overcast"). When a place opens, focus moves to its heading. The SVG chart has a summary label plus a hidden data **table** with the same hourly data. The colour field is decorative; the range in view is announced in text, and the coldest and warmest spots are real buttons.
-- **Reduced motion.** With `prefers-reduced-motion`, rain, snow and lightning are removed, other animations stop, and the map jumps instead of flying.
+- **Reduced motion.** With `prefers-reduced-motion`, rain, snow and lightning are removed, all other animations and transitions stop, Play is hidden, counting numbers show their final value at once, and the map jumps instead of flying.
+- **Counting numbers** animate an `aria-hidden` copy; screen readers get only the final value.
+- **Dropdown and menus** close with Escape (the My places dropdown first, then the open place) and on a click outside.
 - **Themes and contrast.** All colours are CSS variables with a dark and a light set. Temperature chips pick dark or white text by luminance. Text over photos sits on a darkening gradient.
 
 ### Project structure
@@ -104,7 +109,7 @@ All requirements in the brief are implemented. Known limitations:
 ## 4. Next steps
 
 - **Time slider on the map itself:** today the slider moves My places and the open place. Driving the colour field and city values too needs hourly data in the batched grid request (same number of requests, larger response).
-- **Map layers:** switch the field between temperature, rain and wind, each with its own palette (same API change).
+- **Map layers:** switch the field between temperature, rain and wind, each with its own palette (same API change). The phone layout already has the Layers menu, with Rain and Wind marked as coming soon.
 - **Shareable URLs:** put the selected place in the URL.
 - **Cache in `sessionStorage`**, so a reload does not repeat requests.
 - Screen-reader testing, an axe audit, end-to-end tests (Playwright), and component tests for the interactive pieces.

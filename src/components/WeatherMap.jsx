@@ -523,9 +523,15 @@ export default function WeatherMap({
   const [data, setData] = useState({ cells: [], cities: [] })
   const scheme = useColorScheme()
   const isSmall = window.innerWidth < 640
+  // Readouts fade in only on first load, not every time the map moves.
+  const [fresh, setFresh] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setFresh(false), 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
-    <div className="map-wrap" aria-busy={loading}>
+    <div className={`map-wrap ${fresh ? 'is-fresh' : ''}`} aria-busy={loading}>
       <MapContainer
         className="map"
         center={[40, 15]}

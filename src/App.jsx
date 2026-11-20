@@ -8,9 +8,10 @@ import { useReducedMotion } from './hooks/useReducedMotion.js'
 import { reverseGeocodeOwnPosition } from './api/places.js'
 import { fetchCurrentBatch, pointKey } from './api/openMeteo.js'
 import { formatCoords, formatTemp } from './utils/format.js'
-import { SCALE_GRADIENT } from './data/palette.js'
 import { describeNearest, nearestName } from './data/places.js'
 import TimeSlider from './components/TimeSlider.jsx'
+import { LegendCard, LegendChip } from './components/Legend.jsx'
+import LayersMenu from './components/LayersMenu.jsx'
 
 // Stable id for a place: geocoding id when we have one, otherwise its rounded coordinates.
 const placeId = (loc) => (loc.id && !String(loc.id).startsWith('pt:') ? String(loc.id) : `pt:${pointKey(loc)}`)
@@ -47,7 +48,9 @@ export default function App() {
   const [unit, setUnit] = useLocalStorage('weather-explorer:unit', 'C')
   const [overview, setOverview] = useState({ cells: [], error: null })
   const [placesWeather, setPlacesWeather] = useState(new Map())
-  const [placesOpen, setPlacesOpen] = useState(isDesktop)
+  const [placesOpen, setPlacesOpen] = useState(false)
+  const [legendOpen, setLegendOpen] = useLocalStorage('weather-explorer:legend', true)
+  const [chipOpen, setChipOpen] = useLocalStorage('weather-explorer:legend-chip', false)
   const [geoBusy, setGeoBusy] = useState(false)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
@@ -202,14 +205,36 @@ export default function App() {
     )
   }
 
-  // Escape closes the details panel (unless focus is inside the search box).
+  // Escape closes the My places dropdown first, then the details panel
+  // (unless focus is inside the search box, which handles Escape itself).
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape' && !e.target.closest?.('.search')) setSelected(null)
+      if (e.key !== 'Escape' || e.target.closest?.('.search') || e.target.closest?.('.layers')) return
+      if (placesOpen && isDesktop()) {
+        setPlacesOpen(false)
+        document.querySelector('.places-btn')?.focus()
+        return
+      }
+      setSelected(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [placesOpen])
+
+  // On desktop My places is a dropdown: a click outside closes it.
+  useEffect(() => {
+    if (!placesOpen || !isDesktop()) return
+    const onDown = (e) => {
+      if (!e.target.closest?.('.places, .places-btn, .toast-region')) setPlacesOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [placesOpen])
+
+  const selectFromPlaces = (p) => {
+    select(p)
+    if (isDesktop()) setPlacesOpen(false)
+  }
 
   const cells = overview.cells
   const raw = cells.length
@@ -226,7 +251,7 @@ export default function App() {
     hi: { ...raw.hi, name: nearestName(raw.hi.lat, raw.hi.lon) },
   }
   const openSpot = (c) => select({ lat: c.lat, lon: c.lon, source: 'search' })
-  const layoutKey = `${selected ? selected.id : '-'}|${placesOpen}|${places.length}|${!!overview.error}`
+  const layoutKey = `${selected ? selected.id : '-'}|${placesOpen}|${places.length}|${!!overview.error}|${legendOpen}|${chipOpen}|${hour}`
 
   return (
     <div className={`app ${selected ? 'has-panel' : ''} ${placesOpen ? 'places-open' : ''}`}>
@@ -253,14 +278,28 @@ export default function App() {
           </div>
           <SearchBox onSelect={select} unit={unit} />
           <div className="topbar__tools">
-            <button type="button" className="pill" onClick={locateMe} disabled={geoBusy} data-obstacle>
+            <button
+              type="button"
+              className="round-btn mobile-only"
+              onClick={locateMe}
+              disabled={geoBusy}
+              aria-label={geoBusy ? 'Locating…' : 'My location'}
+              title="My location"
+              data-obstacle
+            >
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <circle cx="8" cy="8" r="5.5" />
+                <circle cx="8" cy="8" r="1.8" fill="currentColor" />
+              </svg>
+            </button>
+            <button type="button" className="pill desktop-only" onClick={locateMe} disabled={geoBusy} data-obstacle>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
                 <circle cx="8" cy="8" r="5.5" />
                 <circle cx="8" cy="8" r="1.8" fill="currentColor" />
               </svg>
               {geoBusy ? 'Locating…' : 'My location'}
             </button>
-            <div className="seg seg--pill" role="group" aria-label="Temperature unit" data-obstacle>
+            <div className="seg seg--pill desktop-only" role="group" aria-label="Temperature unit" data-obstacle>
               {['C', 'F'].map((u) => (
                 <button key={u} type="button" aria-pressed={unit === u} onClick={() => setUnit(u)}>
                   °{u}
@@ -268,36 +307,51 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              className="round-btn mobile-only"
+              onClick={() => setUnit(unit === 'C' ? 'F' : 'C')}
+              aria-label={
+                unit === 'C' ? 'Temperature unit: Celsius. Switch to Fahrenheit' : 'Temperature unit: Fahrenheit. Switch to Celsius'
+              }
+              data-obstacle
+            >
+              °{unit}
+            </button>
+            <button
+              type="button"
+              className={`pill places-btn desktop-only ${placesOpen ? 'is-open' : ''}`}
+              aria-expanded={placesOpen}
+              aria-controls="places-pop"
+              onClick={() => setPlacesOpen((o) => !o)}
+              data-obstacle
+            >
+              <span aria-hidden="true" className="places-btn__star">
+                ★
+              </span>
+              My places
+              <span className="places-btn__count">{places.length}</span>
+              <span aria-hidden="true" className="places-btn__caret">
+                {placesOpen ? '▴' : '▾'}
+              </span>
+            </button>
           </div>
         </header>
 
-        <div className="inview glass" data-obstacle>
-          {extremes ? (
-            <>
-              <span className="inview__label">In view</span>
-              <button
-                type="button"
-                className="inview__btn"
-                onClick={() => openSpot(extremes.lo)}
-                aria-label={`Coldest in view: ${extremes.lo.name}, ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
-              >
-                <strong>{formatTemp(extremes.lo.weather.temperature, unit)}</strong>
-                <span className="inview__name">{extremes.lo.name}</span>
-              </button>
-              <span className="inview__scale" aria-hidden="true" style={{ background: SCALE_GRADIENT }} />
-              <button
-                type="button"
-                className="inview__btn"
-                onClick={() => openSpot(extremes.hi)}
-                aria-label={`Warmest in view: ${extremes.hi.name}, ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
-              >
-                <strong>{formatTemp(extremes.hi.weather.temperature, unit)}</strong>
-                <span className="inview__name">{extremes.hi.name}</span>
-              </button>
-            </>
-          ) : (
-            <span className="inview__label">Loading the weather layer…</span>
-          )}
+        <div className="mapbar mobile-only">
+          <LegendChip open={chipOpen} onToggle={() => setChipOpen((o) => !o)} />
+          <LayersMenu />
+        </div>
+
+        <div className="desktop-only">
+          <LegendCard
+            open={legendOpen}
+            onToggle={() => setLegendOpen((o) => !o)}
+            extremes={extremes}
+            unit={unit}
+            hour={hour}
+            onOpenSpot={openSpot}
+          />
         </div>
         <p className="sr-only" role="status" aria-live="polite">
           {extremes &&
@@ -318,7 +372,7 @@ export default function App() {
           unit={unit}
           open={placesOpen}
           onToggle={() => setPlacesOpen((o) => !o)}
-          onSelect={select}
+          onSelect={selectFromPlaces}
           onRemove={removePlace}
           extremes={extremes}
           onOpenSpot={openSpot}
