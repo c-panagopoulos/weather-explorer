@@ -1,5 +1,6 @@
 import { formatTemp } from '../utils/format.js'
 import { SCALE_GRADIENT } from '../data/palette.js'
+import Glow from './bits/Glow.jsx'
 
 /**
  * Desktop: a collapsible card at the bottom left that explains the colour
@@ -8,7 +9,12 @@ import { SCALE_GRADIENT } from '../data/palette.js'
  */
 export function LegendCard({ open, onToggle, extremes, unit, hour, onOpenSpot }) {
   return (
-    <section className={`legend-card glass ${open ? 'is-open' : ''}`} aria-labelledby="legend-title" data-obstacle>
+    <Glow
+      role="region"
+      className={`legend-card glass ${open ? 'is-open' : ''}`}
+      aria-labelledby="legend-title"
+      data-obstacle=""
+    >
       <div className="legend-card__head">
         <button
           type="button"
@@ -61,7 +67,7 @@ export function LegendCard({ open, onToggle, extremes, unit, hour, onOpenSpot })
           )}
         </div>
       )}
-    </section>
+    </Glow>
   )
 }
 

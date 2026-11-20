@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchForecast, pointKey } from '../api/openMeteo.js'
 import { describeWeather } from '../utils/weatherCodes.js'
-import { formatTemp } from '../utils/format.js'
+import { formatTemp, toUnit } from '../utils/format.js'
+import { useReducedMotion } from '../hooks/useReducedMotion.js'
+import Glow from './bits/Glow.jsx'
+import { useFlip } from './bits/useFlip.js'
 import { chipColors, tempCss } from '../data/palette.js'
 import PlacesChart from './PlacesChart.jsx'
 import CountUp from './bits/CountUp.jsx'
@@ -34,6 +37,8 @@ export default function PlacesBar({
 }) {
   const [sort, setSort] = useState('warm')
   const [view, setView] = useState('list')
+  const listRef = useRef(null)
+  const reduced = useReducedMotion()
   const [forecasts, setForecasts] = useState({})
 
   const placesKey = places.map((p) => pointKey(p)).join('|')
@@ -65,16 +70,20 @@ export default function PlacesBar({
   const gMax = withToday.length ? Math.max(...withToday.map((r) => r.today.max)) : 1
   const pos = (t) => ((t - gMin) / Math.max(gMax - gMin, 1)) * 100
 
+  useFlip(listRef, `${open}|${view}|${rows.map((r) => r.id).join(',')}`, reduced)
+
   const byTemp = rows.filter((r) => r.w).sort((a, b) => b.w.temperature - a.w.temperature)
   const warmest = byTemp[0]
   const coldest = byTemp[byTemp.length - 1]
 
   return (
-    <section
+    <Glow
       id="places-pop"
+      role="region"
       className={`places ${open ? 'is-open' : ''}`}
       aria-labelledby="places-title"
       data-obstacle={open ? '' : undefined}
+      surface="var(--glass)"
     >
       <span className="places__grip" aria-hidden="true" />
       <div className="places__head">
@@ -160,14 +169,14 @@ export default function PlacesBar({
                 <span className="prow-head__range">Today low – high</span>
                 <span className="prow-head__rain">Rain</span>
               </div>
-              <ul className="prows anim-in" key={`list-${sort}`}>
+              <ul className="prows" ref={listRef}>
                 {rows.map((p) => {
                   const chip = p.w ? chipColors(p.w.temperature) : null
                   const cond = p.w ? describeWeather(p.w.code, p.w.isDay).label : 'Loading…'
                   const t = p.today
                   const current = p.id === selectedId
                   return (
-                    <li key={p.id} className={`prow ${current ? 'is-current' : ''}`}>
+                    <li key={p.id} data-key={p.id} className={`prow ${current ? 'is-current' : ''}`}>
                       <button
                         type="button"
                         className="prow__main"
@@ -179,8 +188,23 @@ export default function PlacesBar({
                           <span className="prow__cond">{cond}</span>
                         </span>
                         <span className="chip-temp" style={chip ? { background: chip.bg, color: chip.fg } : undefined}>
-                          <span className="sr-only">{hour ? `In ${hour} hours: ` : 'Now: '}</span>
-                          {p.w ? <CountUp value={p.w.temperature} format={(v) => formatTemp(v, unit)} from={p.w.temperature} /> : '–'}
+                          <span className="sr-only">
+                            {hour ? `In ${hour} hours: ` : 'Now: '}
+                            {p.w ? formatTemp(p.w.temperature, unit) : 'loading'}
+                          </span>
+                          <span aria-hidden="true">
+                            {p.w ? (
+                              <CountUp
+                                to={Math.round(toUnit(p.w.temperature, unit))}
+                                from={Math.round(toUnit(p.w.temperature, unit))}
+                                duration={0.6}
+                                trigger="load"
+                                suffix="°"
+                              />
+                            ) : (
+                              '–'
+                            )}
+                          </span>
                         </span>
                         <span className="prow__range">
                           <span className="range__lo">
@@ -233,6 +257,6 @@ export default function PlacesBar({
           )}
         </div>
       )}
-    </section>
+    </Glow>
   )
 }

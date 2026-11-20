@@ -47,11 +47,23 @@ Geolocation only works on `localhost` or over HTTPS, a browser rule. The live de
 | **Leaflet + react-leaflet** | A mature, light, free map with no API key. It handles touch, keyboard panning and zoom well. Base map: **Esri Canvas Dark / Light Gray** tiles, which keep the colour field readable. |
 | **Canvas temperature field** | The grid values are interpolated with inverse distance weighting on a coarse canvas, then upscaled with a blur and blended over the tiles. The canvas sits in Leaflet's overlay pane, so it pans with the map at no cost and is redrawn only when movement ends. |
 | **No UI or chart library** | The 24-hour chart is a small hand-written SVG (a Catmull-Rom curve with HTML labels laid over it) and all styling is plain CSS with theme variables. Fewer dependencies, full control over accessibility. Fonts: Hanken Grotesk and IBM Plex Mono from Google Fonts. |
-| **Animations** | Plain CSS keyframes, plus a small `CountUp` component of my own (`src/components/bits/`), inspired by [React Bits](https://reactbits.dev)' CountUp. I did not copy React Bits components or add an animation library, to keep the dependency list and licensing simple. |
+| **Animations** | Plain CSS keyframes, plus three components from [React Bits](https://reactbits.dev) (see below). |
 | **Vitest** | Unit tests for the logic that matters most: grid generation, caching, unit conversion, weather-code mapping and forecast normalisation. |
 | **GitHub Actions → GitHub Pages** | Each push to `main` runs the tests, builds and deploys the live demo. |
 
-**Third-party runtime dependencies:** `react`, `react-dom`, `leaflet`, `react-leaflet`. Nothing else.
+**Third-party runtime dependencies:** `react`, `react-dom`, `leaflet`, `react-leaflet`, and `motion` (needed by React Bits' CountUp).
+
+### React Bits components
+
+Copied into `src/components/bits/`, plain-CSS variants, under React Bits' **MIT + Commons Clause** licence (© David Haz). The licence allows use as part of an application; it forbids selling or redistributing the components on their own. The licence text is in `src/components/bits/LICENSE.md`, and each file keeps the copyright notice.
+
+| Component | Where | Notes |
+| --- | --- | --- |
+| **CountUp** | The big temperature in the details; the *Now* chips in My places | The animated copy is `aria-hidden`; screen readers get the final value from sr-only text. It skips the animation with reduced motion. |
+| **Elastic Slider** | The timeline | `role="slider"` with arrow keys, Page Up/Down, Home/End, `aria-valuetext` ("6 hours from now") and a focus ring. Changes: removed its `@hugeicons` default icons (no extra dependency), and fixed an animation-frame id that was not reset on unmount, which froze the fill after a React StrictMode remount. |
+| **Spotlight Card** | The legend card, the My places dropdown and the details panel | A faint glow that follows the cursor. Only on pointer devices (`hover: hover`), and off with reduced motion. |
+
+**Animated List** was not used: it is a selectable `listbox` of `option`s, and our rows contain buttons (open, remove), which would break those semantics. A small FLIP hook of my own (`useFlip.js`) gives the same effect: new places slide in, and re-sorting glides rows to their new place.
 
 **External services:**
 

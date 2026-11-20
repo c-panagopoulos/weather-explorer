@@ -17,6 +17,7 @@ import { describeNearest, nearestPlace } from '../data/places.js'
 import { hourLabel } from './TimeSlider.jsx'
 import WeatherScene from './WeatherScene.jsx'
 import CountUp from './bits/CountUp.jsx'
+import Glow from './bits/Glow.jsx'
 import HourlyChart from './HourlyChart.jsx'
 
 // "2° warmer than Lisbon · 9° colder than Cairo": the closest warmer and colder saved places.
@@ -74,7 +75,15 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
   const pos = (t) => ((t - weekMin) / Math.max(weekMax - weekMin, 1)) * 100
 
   return (
-    <aside className="panel" aria-labelledby="panel-title" aria-busy={loading} data-obstacle>
+    <Glow
+      className="panel"
+      role="complementary"
+      aria-labelledby="panel-title"
+      aria-busy={loading}
+      data-obstacle=""
+      surface="var(--surface)"
+      shadow="var(--shadow)"
+    >
       <span className="panel__grip" aria-hidden="true" />
       <WeatherScene place={photoPlace} effect={weather?.effect ?? 'clear'} isDay={current ? current.isDay : null}>
         <div className="scene__top">
@@ -107,8 +116,10 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
         {current && (
           <div className="now">
             <span className="now__temp">
-              <CountUp key={key} value={current.temperature} format={(v) => formatTemp(v, unit)} />
-              <span className="sr-only">{unit === 'C' ? ' Celsius' : ' Fahrenheit'}</span>
+              <span aria-hidden="true">
+                <CountUp key={key} to={Math.round(toUnit(current.temperature, unit))} duration={0.6} trigger="load" suffix="°" />
+              </span>
+              <span className="sr-only">{formatTemp(current.temperature, unit, { withUnit: true })}</span>
             </span>
             <span className="now__meta">
               <span className="now__cond">{weather.label}</span>
@@ -220,6 +231,6 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
         {data &&
           `${location.name ? placeLabel(location) : title}: ${formatTemp(current.temperature, unit, { withUnit: true })}, ${weather.label}.`}
       </p>
-    </aside>
+    </Glow>
   )
 }
