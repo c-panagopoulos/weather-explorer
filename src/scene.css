@@ -1,0 +1,248 @@
+/* The weather scene: a city photo with animated weather drawn on top. */
+
+.scene {
+  position: relative;
+  margin: 0;
+  min-height: 230px;
+  overflow: hidden;
+  color: #fff;
+  isolation: isolate;
+  border-radius: inherit;
+}
+
+.scene__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+/* Fallback when there's no photo: a sky gradient that matches the weather. */
+.scene__photo--fallback {
+  background: linear-gradient(160deg, #4f9be8, #9fd0ff);
+}
+.scene--cloudy .scene__photo--fallback,
+.scene--fog .scene__photo--fallback {
+  background: linear-gradient(160deg, #7d8a99, #c3ccd6);
+}
+.scene--rain .scene__photo--fallback,
+.scene--drizzle .scene__photo--fallback {
+  background: linear-gradient(160deg, #3e4f63, #7b8ca0);
+}
+.scene--thunder .scene__photo--fallback {
+  background: linear-gradient(160deg, #23283a, #545c78);
+}
+.scene--snow .scene__photo--fallback {
+  background: linear-gradient(160deg, #9fb3c8, #e4edf5);
+}
+.scene--night .scene__photo--fallback {
+  background: linear-gradient(160deg, #0b1630, #2b3d66);
+}
+
+.scene__fx {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Tint: darkens the photo according to the weather and keeps the white
+   text readable (bottom gradient guarantees contrast). */
+.scene__tint {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.6) 100%);
+}
+.scene--cloudy .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(40, 50, 60, 0.55), rgba(60, 70, 80, 0.25) 45%, rgba(0, 0, 0, 0.6));
+}
+.scene--rain .scene__tint,
+.scene--drizzle .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(20, 30, 45, 0.65), rgba(30, 45, 60, 0.4) 45%, rgba(0, 0, 0, 0.65));
+}
+.scene--thunder .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(10, 10, 25, 0.75), rgba(20, 20, 40, 0.5) 45%, rgba(0, 0, 0, 0.7));
+}
+.scene--snow .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(60, 80, 100, 0.5), rgba(220, 230, 240, 0.15) 45%, rgba(0, 0, 0, 0.55));
+}
+.scene--fog .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(90, 100, 110, 0.55), rgba(200, 205, 210, 0.3) 45%, rgba(0, 0, 0, 0.55));
+}
+.scene--night .scene__tint {
+  background:
+    linear-gradient(180deg, rgba(5, 10, 35, 0.7), rgba(10, 20, 60, 0.45) 45%, rgba(0, 0, 0, 0.7));
+}
+
+/* Sun glow */
+.sun {
+  position: absolute;
+  top: -70px;
+  right: -50px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 160, 0.85) 0%, rgba(255, 200, 80, 0.35) 40%, transparent 70%);
+  animation: sun-pulse 6s ease-in-out infinite;
+}
+@keyframes sun-pulse {
+  50% {
+    transform: scale(1.12);
+    opacity: 0.8;
+  }
+}
+
+/* Clouds drifting across */
+.cloud {
+  position: absolute;
+  width: 260px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%);
+  filter: blur(4px);
+  animation: drift 38s linear infinite;
+}
+.cloud--1 {
+  top: 6%;
+  left: -40%;
+}
+.cloud--2 {
+  top: 34%;
+  left: -60%;
+  width: 340px;
+  animation-duration: 55s;
+  animation-delay: -20s;
+  opacity: 0.7;
+}
+.scene--rain .cloud,
+.scene--thunder .cloud,
+.scene--drizzle .cloud {
+  background: radial-gradient(ellipse at center, rgba(70, 80, 95, 0.7), rgba(70, 80, 95, 0) 70%);
+}
+@keyframes drift {
+  to {
+    transform: translateX(200%);
+  }
+}
+
+/* Fog bands */
+.fog {
+  position: absolute;
+  left: -50%;
+  width: 200%;
+  height: 45%;
+  background: linear-gradient(90deg, transparent, rgba(235, 238, 242, 0.55), transparent 60%, rgba(235, 238, 242, 0.45));
+  filter: blur(14px);
+  animation: fog-move 22s ease-in-out infinite alternate;
+}
+.fog--1 {
+  top: 25%;
+}
+.fog--2 {
+  top: 55%;
+  animation-duration: 30s;
+  animation-direction: alternate-reverse;
+}
+@keyframes fog-move {
+  to {
+    transform: translateX(25%);
+  }
+}
+
+/* Rain */
+.drop {
+  position: absolute;
+  top: -20%;
+  width: 1.5px;
+  height: 22px;
+  background: linear-gradient(transparent, rgba(220, 235, 255, 0.95));
+  animation: fall linear infinite;
+  transform: rotate(12deg);
+}
+.scene--drizzle .drop {
+  height: 12px;
+}
+@keyframes fall {
+  to {
+    transform: translate(-30px, 330px) rotate(12deg);
+  }
+}
+
+/* Snow */
+.flake {
+  position: absolute;
+  top: -10px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation: snow linear infinite;
+}
+@keyframes snow {
+  to {
+    transform: translate(var(--drift), 300px);
+  }
+}
+
+/* Lightning flash */
+.lightning {
+  position: absolute;
+  inset: 0;
+  background: rgba(230, 235, 255, 0.85);
+  opacity: 0;
+  animation: flash 7s infinite;
+}
+@keyframes flash {
+  0%,
+  89%,
+  92%,
+  95%,
+  100% {
+    opacity: 0;
+  }
+  90%,
+  94% {
+    opacity: 0.7;
+  }
+}
+
+.scene__content {
+  position: relative;
+  padding: 22px 16px 20px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.scene__credit {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.scene__credit a {
+  color: #fff;
+}
+
+/* Reduced motion: keep the look (tint, static clouds/fog), drop the movement
+   and the lightning flashes entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .drop,
+  .flake {
+    display: none;
+  }
+  .lightning {
+    display: none;
+  }
+}
