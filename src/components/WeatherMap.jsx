@@ -124,10 +124,21 @@ function FieldLayer({ cells, hour }) {
     const M = 3 // margin so the blur doesn't fade the edges
     const W = Math.ceil(size.x / S) + 2 * M
     const H = Math.ceil(size.y / S) + 2 * M
-    const pts = data.map((c) => {
-      const p = map.latLngToContainerPoint([c.lat, c.displayLon])
-      return [(p.x + ox) / S + M - 0.5, (p.y + oy) / S + M - 0.5, atHour(c.weather, hourRef.current).temperature]
-    })
+    // When zoomed out, the screen shows more than one copy of the world, but
+    // each grid point exists once. Repeat every point on the neighbouring
+    // copies (±360°) so the whole screen gets the right colours.
+    const pts = []
+    for (const c of data) {
+      const t = atHour(c.weather, hourRef.current).temperature
+      for (const k of [-720, -360, 0, 360, 720]) {
+        const p = map.latLngToContainerPoint([c.lat, c.lon + k])
+        const x = p.x + ox
+        const y = p.y + oy
+        if (x < -size.x * 0.25 || x > size.x * 1.25 || y < -size.y * 0.25 || y > size.y * 1.25) continue
+        pts.push([x / S + M - 0.5, y / S + M - 0.5, t])
+      }
+    }
+    if (!pts.length) return
     const small = document.createElement('canvas')
     small.width = W
     small.height = H
@@ -290,7 +301,10 @@ function sampleAt(map, cells, x, y, hour) {
   let nearest = null
   let nearestD = Infinity
   for (const c of cells) {
-    const p = map.latLngToContainerPoint([c.lat, c.displayLon])
+    // Use the copy of the point on the same world copy as the probe.
+    const ll = map.containerPointToLatLng([x, y])
+    const shift = Math.round((ll.lng - c.lon) / 360) * 360
+    const p = map.latLngToContainerPoint([c.lat, c.lon + shift])
     const d2 = ((p.x - x) / 8) ** 2 + ((p.y - y) / 8) ** 2
     if (d2 < nearestD) {
       nearestD = d2
@@ -565,6 +579,12 @@ export default function WeatherMap({
         minZoom={2}
         maxZoom={12}
         worldCopyJump
+        // Stop vertical dragging at the poles; horizontally the world keeps wrapping.
+        maxBounds={[
+          [-85, -100000],
+          [85, 100000],
+        ]}
+        maxBoundsViscosity={1}
         zoomControl={false}
         zoomAnimation={!reducedMotion}
         fadeAnimation={!reducedMotion}
