@@ -2155,27 +2155,3 @@ button:active:not(:disabled) {
     animation: none;
   }
 }
-
-/* Map values roll when the time slider changes the hour */
-@keyframes roll-up {
-  from {
-    opacity: 0;
-    transform: translateY(60%);
-    filter: blur(3px);
-  }
-}
-@keyframes roll-down {
-  from {
-    opacity: 0;
-    transform: translateY(-60%);
-    filter: blur(3px);
-  }
-}
-.ro__t--up,
-.ro__t--down {
-  display: inline-block;
-  animation: roll-up 0.45s cubic-bezier(0.2, 0.7, 0.2, 1.2) both;
-}
-.ro__t--down {
-  animation-name: roll-down;
-}

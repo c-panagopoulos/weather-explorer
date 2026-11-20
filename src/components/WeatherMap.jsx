@@ -195,16 +195,6 @@ const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b
 function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, hour }) {
   const map = useMap()
   const [items, setItems] = useState([])
-  // Roll the numbers only when the time slider changes the hour (not on every pan).
-  const lastHour = useRef(hour)
-  const [rollUp, setRollUp] = useState(null)
-  useEffect(() => {
-    if (hour === lastHour.current) return
-    setRollUp(hour > lastHour.current)
-    lastHour.current = hour
-    const t = setTimeout(() => setRollUp(null), 700)
-    return () => clearTimeout(t)
-  }, [hour])
 
   const compute = useCallback(() => {
     const cr = map.getContainer().getBoundingClientRect()
@@ -266,7 +256,7 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, ho
     const label = describeWeather(w.code, w.isDay).label
     const html = `<span class="ro ro--${it.side ?? 'none'}${it.saved ? ' ro--saved' : ''}"><span class="ro__dot"></span>${
       it.side
-        ? `<span class="ro__label" style="width:${it.lw}px"><span class="ro__t${rollUp == null ? '' : rollUp ? ' ro__t--up' : ' ro__t--down'}">${t}</span><span class="ro__n">${escapeHtml(it.name)}</span></span>`
+        ? `<span class="ro__label" style="width:${it.lw}px"><span class="ro__t">${t}</span><span class="ro__n">${escapeHtml(it.name)}</span></span>`
         : ''
     }</span>`
     const aria = `${it.saved ? 'Saved place' : 'City'}: ${it.name}, ${hour ? `in ${hour} hours ` : ''}${formatTemp(w.temperature, unit, { withUnit: true })}, ${label}`
