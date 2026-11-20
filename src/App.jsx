@@ -9,6 +9,8 @@ import { reverseGeocodeOwnPosition } from './api/places.js'
 import { fetchCurrentBatch, pointKey } from './api/openMeteo.js'
 import { formatCoords, formatTemp } from './utils/format.js'
 import { SCALE_GRADIENT } from './data/palette.js'
+import { describeNearest, nearestName } from './data/places.js'
+import TimeSlider from './components/TimeSlider.jsx'
 
 // Stable id for a place: geocoding id when we have one, otherwise its rounded coordinates.
 const placeId = (loc) => (loc.id && !String(loc.id).startsWith('pt:') ? String(loc.id) : `pt:${pointKey(loc)}`)
@@ -21,8 +23,10 @@ function readHash() {
   const lat = Number(q.get('lat'))
   const lon = Number(q.get('lon'))
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
+  const t = Number((q.get('t') || '').replace(/[^0-9]/g, ''))
   return {
     unit: q.get('u') === 'F' ? 'F' : q.get('u') === 'C' ? 'C' : null,
+    hour: Number.isInteger(t) && t > 0 && t < 24 ? t : 0,
     place: {
       id: decodeURIComponent(m[1]),
       lat,
@@ -47,6 +51,8 @@ export default function App() {
   const [geoBusy, setGeoBusy] = useState(false)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
+  const [hour, setHour] = useState(0)
+  const [playing, setPlaying] = useState(false)
   const reducedMotion = useReducedMotion()
 
   const select = useCallback((loc) => setSelected({ ...loc, id: placeId(loc) }), [])
@@ -62,6 +68,7 @@ export default function App() {
     const shared = readHash()
     if (!shared) return
     if (shared.unit) setUnit(shared.unit)
+    if (shared.hour) setHour(shared.hour)
     select(shared.place)
   }, [])
 
@@ -78,6 +85,30 @@ export default function App() {
     }
   }, [placesKey])
 
+  // Play steps through the hours once, then stops.
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => {
+      setHour((h) => {
+        if (h >= 23) {
+          setPlaying(false)
+          return 23
+        }
+        return h + 1
+      })
+    }, 800)
+    return () => clearInterval(id)
+  }, [playing])
+  useEffect(() => {
+    if (reducedMotion) setPlaying(false)
+  }, [reducedMotion])
+
+  function togglePlay() {
+    if (playing) return setPlaying(false)
+    if (hour >= 23) setHour(0)
+    setPlaying(true)
+  }
+
   const isSaved = selected ? places.some((p) => p.id === selected.id) : false
 
   function toggleSave() {
@@ -86,7 +117,10 @@ export default function App() {
       removePlace(selected.id)
       return
     }
-    const fallbackName = selected.source === 'geo' ? 'My location' : formatCoords(selected.lat, selected.lon)
+    const fallbackName =
+      selected.source === 'geo'
+        ? 'My location'
+        : describeNearest(selected.lat, selected.lon).replace(/^\d+ km from /, 'Off ') || formatCoords(selected.lat, selected.lon)
     setPlaces([
       ...places,
       {
@@ -122,6 +156,7 @@ export default function App() {
   async function share() {
     if (!selected) return
     const q = new URLSearchParams({ lat: selected.lat.toFixed(4), lon: selected.lon.toFixed(4), u: unit })
+    if (hour) q.set('t', `+${hour}h`)
     if (selected.name) {
       q.set('name', selected.name)
       if (selected.admin1) q.set('admin1', selected.admin1)
@@ -177,7 +212,7 @@ export default function App() {
   }, [])
 
   const cells = overview.cells
-  const extremes = cells.length
+  const raw = cells.length
     ? cells.reduce(
         (acc, c) => ({
           lo: c.weather.temperature < acc.lo.weather.temperature ? c : acc.lo,
@@ -186,6 +221,10 @@ export default function App() {
         { lo: cells[0], hi: cells[0] },
       )
     : null
+  const extremes = raw && {
+    lo: { ...raw.lo, name: nearestName(raw.lo.lat, raw.lo.lon) },
+    hi: { ...raw.hi, name: nearestName(raw.hi.lat, raw.hi.lon) },
+  }
   const openSpot = (c) => select({ lat: c.lat, lon: c.lon, source: 'search' })
   const layoutKey = `${selected ? selected.id : '-'}|${placesOpen}|${places.length}|${!!overview.error}`
 
@@ -205,6 +244,7 @@ export default function App() {
           onSummary={setOverview}
           reducedMotion={reducedMotion}
           layoutKey={layoutKey}
+          probeHidden={!!selected && !isDesktop()}
         />
 
         <header className="topbar">
@@ -239,18 +279,20 @@ export default function App() {
                 type="button"
                 className="inview__btn"
                 onClick={() => openSpot(extremes.lo)}
-                aria-label={`Coldest in view: ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
+                aria-label={`Coldest in view: ${extremes.lo.name}, ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
               >
                 <strong>{formatTemp(extremes.lo.weather.temperature, unit)}</strong>
+                <span className="inview__name">{extremes.lo.name}</span>
               </button>
               <span className="inview__scale" aria-hidden="true" style={{ background: SCALE_GRADIENT }} />
               <button
                 type="button"
                 className="inview__btn"
                 onClick={() => openSpot(extremes.hi)}
-                aria-label={`Warmest in view: ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
+                aria-label={`Warmest in view: ${extremes.hi.name}, ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}. Open the forecast.`}
               >
                 <strong>{formatTemp(extremes.hi.weather.temperature, unit)}</strong>
+                <span className="inview__name">{extremes.hi.name}</span>
               </button>
             </>
           ) : (
@@ -259,7 +301,7 @@ export default function App() {
         </div>
         <p className="sr-only" role="status" aria-live="polite">
           {extremes &&
-            `In view: from ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })} to ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}.`}
+            `Coldest in view ${extremes.lo.name} ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })}; warmest ${extremes.hi.name} ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}.`}
         </p>
 
         {overview.error && (
@@ -280,6 +322,18 @@ export default function App() {
           onRemove={removePlace}
           extremes={extremes}
           onOpenSpot={openSpot}
+          hour={hour}
+        />
+
+        <TimeSlider
+          hour={hour}
+          onHour={(h) => {
+            setPlaying(false)
+            setHour(h)
+          }}
+          playing={playing}
+          onTogglePlay={togglePlay}
+          reducedMotion={reducedMotion}
         />
 
         {selected && (
@@ -292,6 +346,7 @@ export default function App() {
             onToggleSave={toggleSave}
             onClose={() => setSelected(null)}
             onShare={share}
+            hour={hour}
           />
         )}
 

@@ -7,6 +7,7 @@ import { describeWeather } from '../utils/weatherCodes.js'
 import { formatTemp } from '../utils/format.js'
 import { tempRgb } from '../data/palette.js'
 import { CITIES } from '../data/cities.js'
+import { PLACES, describeNearest } from '../data/places.js'
 
 const MOVE_DEBOUNCE_MS = 450
 const MAX_CITIES = 24
@@ -270,6 +271,218 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey }) 
   })
 }
 
+// Interpolated temperature (same IDW as the field) and the nearest cell's condition at a screen point.
+function sampleAt(map, cells, x, y) {
+  let num = 0
+  let den = 0
+  let nearest = null
+  let nearestD = Infinity
+  for (const c of cells) {
+    const p = map.latLngToContainerPoint([c.lat, c.displayLon])
+    const d2 = ((p.x - x) / 8) ** 2 + ((p.y - y) / 8) ** 2
+    if (d2 < nearestD) {
+      nearestD = d2
+      nearest = c
+    }
+    if (d2 < 0.01) return { temperature: c.weather.temperature, cell: c }
+    const w = 1 / (d2 * Math.sqrt(d2))
+    num += w * c.weather.temperature
+    den += w
+  }
+  return { temperature: num / den, cell: nearest }
+}
+
+const SNAP_PX = 48
+
+/**
+ * The probe reads the weather anywhere on the map:
+ * - mouse: a ring + bubble follow the pointer; click opens the forecast;
+ * - keyboard: when the map has focus, a crosshair sits in the centre, arrow
+ *   keys pan (Leaflet), Enter opens the forecast, and a live region reads it out;
+ * - touch (< 640px): the ring stays in the centre and the map is dragged under
+ *   it; it snaps to a nearby city, and tapping it opens the forecast.
+ */
+function Probe({ cells, unit, onSelect, touch }) {
+  const map = useMap()
+  const [pointer, setPointer] = useState(null)
+  const [kbd, setKbd] = useState(false)
+  const [, setTick] = useState(0)
+  const [announce, setAnnounce] = useState('')
+  const ringRef = useRef(null)
+
+  const mode = kbd ? 'kbd' : touch ? 'touch' : pointer ? 'pointer' : null
+
+  function readCentre() {
+    const size = map.getSize()
+    let x = size.x / 2
+    let y = size.y / 2
+    let snapped = null
+    if (touch) {
+      let best = SNAP_PX
+      for (const p of PLACES) {
+        const pt = map.latLngToContainerPoint([p.lat, p.lon])
+        const d = Math.hypot(pt.x - x, pt.y - y)
+        if (d < best) {
+          best = d
+          snapped = p
+          x = pt.x
+          y = pt.y
+        }
+      }
+      if (snapped) {
+        x = map.latLngToContainerPoint([snapped.lat, snapped.lon]).x
+        y = map.latLngToContainerPoint([snapped.lat, snapped.lon]).y
+      }
+    }
+    return { x, y, snapped }
+  }
+
+  function describe(x, y, snapped) {
+    if (!cells.length) return null
+    const ll = map.containerPointToLatLng([x, y])
+    const lon = L.Util.wrapNum(ll.lng, [-180, 180])
+    const { temperature, cell } = sampleAt(map, cells, x, y)
+    const cond = describeWeather(cell.weather.code, cell.weather.isDay).label
+    const name = snapped ? `${snapped.name}, ${snapped.country}` : describeNearest(ll.lat, lon)
+    return { lat: ll.lat, lon, temperature, cond, name }
+  }
+
+  useMapEvents({
+    mousemove: (e) => {
+      if (!touch) setPointer({ x: e.containerPoint.x, y: e.containerPoint.y })
+    },
+    mouseout: () => setPointer(null),
+    move: () => (kbd || touch) && setTick((t) => t + 1),
+    moveend: () => {
+      if (!kbd) return
+      const c = readCentre()
+      const info = describe(c.x, c.y, c.snapped)
+      if (info)
+        setAnnounce(
+          `Map centre, ${info.name}: ${formatTemp(info.temperature, unit, { withUnit: true })}, ${info.cond}. Press Enter to open the forecast.`,
+        )
+    },
+  })
+
+  useEffect(() => {
+    const el = map.getContainer()
+    const onFocus = (e) => {
+      if (e.target === el && el.matches(':focus-visible')) {
+        setKbd(true)
+        setPointer(null)
+        map.fire('moveend')
+      }
+    }
+    const onBlur = (e) => e.target === el && setKbd(false)
+    const onKey = (e) => {
+      if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return
+      e.preventDefault()
+      const c = map.getCenter()
+      onSelect({ lat: c.lat, lon: L.Util.wrapNum(c.lng, [-180, 180]), source: 'map' })
+    }
+    el.addEventListener('focus', onFocus)
+    el.addEventListener('blur', onBlur)
+    el.addEventListener('keydown', onKey)
+    return () => {
+      el.removeEventListener('focus', onFocus)
+      el.removeEventListener('blur', onBlur)
+      el.removeEventListener('keydown', onKey)
+    }
+  }, [map, onSelect])
+
+  useEffect(() => {
+    if (ringRef.current) L.DomEvent.disableClickPropagation(ringRef.current)
+  })
+
+  let view = null
+  if (mode === 'pointer') view = { ...pointer, snapped: null }
+  else if (mode) view = readCentre()
+  const info = view ? describe(view.x, view.y, view.snapped) : null
+  // Flip the bubble to the left when it would run under the details panel or off screen.
+  const size = map.getSize()
+  const panel = document.querySelector('.panel')
+  const limit = panel
+    ? Math.min(size.x, panel.getBoundingClientRect().left - map.getContainer().getBoundingClientRect().left)
+    : size.x
+  const flip = view && view.x > limit - 320
+
+  return (
+    <>
+      <p className="sr-only" role="status" aria-live="polite">
+        {kbd ? announce : ''}
+      </p>
+      {kbd && <div className="map-focus-frame" aria-hidden="true" />}
+      {view && info && (
+        <div className={`probe probe--${mode}`} style={{ left: view.x, top: view.y }}>
+          {mode === 'touch' ? (
+            <button
+              ref={ringRef}
+              type="button"
+              className="probe__ring probe__ring--btn"
+              aria-label={`Open the forecast for ${info.name}: ${formatTemp(info.temperature, unit, { withUnit: true })}, ${info.cond}`}
+              onClick={() =>
+                onSelect(
+                  view.snapped
+                    ? { ...view.snapped, admin1: '', source: 'search' }
+                    : { lat: info.lat, lon: info.lon, source: 'map' },
+                )
+              }
+            />
+          ) : (
+            <span className="probe__ring" aria-hidden="true" />
+          )}
+          <span className="probe__dot" aria-hidden="true" />
+          <div
+            className={`probe__bubble ${flip ? 'is-flipped' : ''}`}
+            aria-hidden="true"
+            // On touch the bubble stays put, so map labels avoid it.
+            data-obstacle={mode === 'touch' ? '' : undefined}
+          >
+            <span className="probe__value">
+              <span className="probe__temp">{formatTemp(info.temperature, unit)}</span>
+              <span className="probe__cond">{info.cond}</span>
+            </span>
+            <span className="probe__name">{info.name}</span>
+            {mode !== 'touch' && (
+              <span className="probe__hint">{mode === 'kbd' ? 'Arrows pan · Enter for forecast' : 'Click for the forecast'}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+const HINT_KEY = 'weather-explorer:ring-hint-seen'
+
+function RingHint() {
+  const [show, setShow] = useState(() => {
+    try {
+      return !window.localStorage.getItem(HINT_KEY)
+    } catch {
+      return true
+    }
+  })
+  if (!show) return null
+  const dismiss = () => {
+    try {
+      window.localStorage.setItem(HINT_KEY, '1')
+    } catch {
+      // Storage unavailable: the hint just shows again next time.
+    }
+    setShow(false)
+  }
+  return (
+    <div className="ring-hint" role="note" data-obstacle>
+      <strong>Drag the map under the ring</strong>
+      <span>The ring shows the temperature at that spot. Tap the ring, or any value, to see the forecast.</span>
+      <button type="button" onClick={dismiss}>
+        Got it
+      </button>
+    </div>
+  )
+}
+
 function ClickToExplore({ onSelect }) {
   useMapEvents({
     click: (e) => onSelect({ lat: e.latlng.lat, lon: L.Util.wrapNum(e.latlng.lng, [-180, 180]), source: 'map' }),
@@ -295,7 +508,17 @@ const selectedIcon = L.divIcon({
   iconAnchor: [8, 8],
 })
 
-export default function WeatherMap({ selected, places, placesWeather, unit, onSelect, onSummary, reducedMotion, layoutKey }) {
+export default function WeatherMap({
+  selected,
+  places,
+  placesWeather,
+  unit,
+  onSelect,
+  onSummary,
+  reducedMotion,
+  layoutKey,
+  probeHidden,
+}) {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState({ cells: [], cities: [] })
   const scheme = useColorScheme()
@@ -320,6 +543,7 @@ export default function WeatherMap({ selected, places, placesWeather, unit, onSe
         <WeatherData onData={setData} onSummary={onSummary} onLoading={setLoading} />
         <FieldLayer cells={data.cells} />
         <ClickToExplore onSelect={onSelect} />
+        {!probeHidden && <Probe cells={data.cells} unit={unit} onSelect={onSelect} touch={isSmall} />}
         <FlyToSelection selected={selected} reducedMotion={reducedMotion} />
         <Readouts
           places={places}
@@ -345,6 +569,7 @@ export default function WeatherMap({ selected, places, placesWeather, unit, onSe
           Updating map…
         </div>
       )}
+      {isSmall && !probeHidden && <RingHint />}
     </div>
   )
 }

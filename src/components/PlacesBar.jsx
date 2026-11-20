@@ -3,6 +3,8 @@ import { fetchForecast, pointKey } from '../api/openMeteo.js'
 import { describeWeather } from '../utils/weatherCodes.js'
 import { formatTemp } from '../utils/format.js'
 import { chipColors, tempCss } from '../data/palette.js'
+import PlacesChart from './PlacesChart.jsx'
+import { hourLabel } from './TimeSlider.jsx'
 
 const SORTS = [
   ['warm', 'Warmest', (a, b) => (b.w?.temperature ?? -999) - (a.w?.temperature ?? -999)],
@@ -17,8 +19,21 @@ const SORTS = [
  * low/high and rain chance come from each place's (cached) forecast, loaded
  * only while the list is open.
  */
-export default function PlacesBar({ places, weather, selectedId, unit, open, onToggle, onSelect, onRemove, extremes, onOpenSpot }) {
+export default function PlacesBar({
+  places,
+  weather,
+  selectedId,
+  unit,
+  open,
+  onToggle,
+  onSelect,
+  onRemove,
+  extremes,
+  onOpenSpot,
+  hour,
+}) {
   const [sort, setSort] = useState('warm')
+  const [view, setView] = useState('list')
   const [forecasts, setForecasts] = useState({})
 
   const placesKey = places.map((p) => pointKey(p)).join('|')
@@ -36,7 +51,12 @@ export default function PlacesBar({ places, weather, selectedId, unit, open, onT
   const rows = places
     .map((p) => {
       const key = pointKey(p)
-      return { ...p, w: weather.get(key), today: forecasts[key]?.daily[0] }
+      const f = forecasts[key]
+      const now = weather.get(key)
+      // With the time slider moved, values come from the place's hourly forecast.
+      const at = hour > 0 && f?.hourly[hour]
+      const w = at ? { temperature: at.temperature, code: at.code, isDay: at.isDay } : now
+      return { ...p, w, today: f?.daily[0], hours: f?.hourly }
     })
     .sort(SORTS.find((s) => s[0] === sort)[2])
 
@@ -64,9 +84,23 @@ export default function PlacesBar({ places, weather, selectedId, unit, open, onT
             </p>
           )}
         </div>
-        <button type="button" className="btn-outline" aria-expanded={open} aria-controls="places-body" onClick={onToggle}>
-          {open ? 'Hide' : places.length ? 'Compare' : 'Show'}
-        </button>
+        <div className="places__tools">
+          {open && places.length > 0 && (
+            <div className="seg seg--view" role="group" aria-label="Show places as">
+              {[
+                ['list', 'List'],
+                ['chart', 'Chart'],
+              ].map(([k, label]) => (
+                <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" className="btn-outline" aria-expanded={open} aria-controls="places-body" onClick={onToggle}>
+            {open ? 'Hide' : places.length ? 'Compare' : 'Show'}
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -91,19 +125,26 @@ export default function PlacesBar({ places, weather, selectedId, unit, open, onT
                 <div className="places__starts">
                   <span className="places__starts-label">Or start with the extremes in view</span>
                   <button type="button" className="btn-outline" onClick={() => onOpenSpot(extremes.hi)}>
-                    Warmest · {formatTemp(extremes.hi.weather.temperature, unit)}
+                    Warmest · {extremes.hi.name} {formatTemp(extremes.hi.weather.temperature, unit)}
                   </button>
                   <button type="button" className="btn-outline" onClick={() => onOpenSpot(extremes.lo)}>
-                    Coldest · {formatTemp(extremes.lo.weather.temperature, unit)}
+                    Coldest · {extremes.lo.name} {formatTemp(extremes.lo.weather.temperature, unit)}
                   </button>
                 </div>
               )}
             </div>
+          ) : view === 'chart' ? (
+            <PlacesChart
+              series={rows.filter((r) => r.hours).map((r) => ({ id: r.id, name: r.name, hours: r.hours }))}
+              selectedId={selectedId}
+              unit={unit}
+              hour={hour}
+            />
           ) : (
             <>
               <div className="prow-head" aria-hidden="true">
                 <span>Place</span>
-                <span>Now</span>
+                <span>{hour ? `At ${hourLabel(hour).slice(-5)}` : 'Now'}</span>
                 <span className="prow-head__range">Today low – high</span>
                 <span className="prow-head__rain">Rain</span>
               </div>
@@ -126,7 +167,7 @@ export default function PlacesBar({ places, weather, selectedId, unit, open, onT
                           <span className="prow__cond">{cond}</span>
                         </span>
                         <span className="chip-temp" style={chip ? { background: chip.bg, color: chip.fg } : undefined}>
-                          <span className="sr-only">Now </span>
+                          <span className="sr-only">{hour ? `At ${hourLabel(hour)} ` : 'Now '}</span>
                           {p.w ? formatTemp(p.w.temperature, unit) : '–'}
                         </span>
                         <span className="prow__range">

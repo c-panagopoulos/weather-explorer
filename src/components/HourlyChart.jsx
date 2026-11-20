@@ -25,7 +25,7 @@ function smoothPath(pts) {
  * over the SVG (so they scale with the text, not the drawing). Screen-reader
  * users get a summary label plus the same data as a real table.
  */
-export default function HourlyChart({ hours, unit }) {
+export default function HourlyChart({ hours, unit, hour = 0 }) {
   if (!hours.length) return null
   const temps = hours.map((h) => toUnit(h.temperature, unit))
   const min = Math.min(...temps)
@@ -61,6 +61,9 @@ export default function HourlyChart({ hours, unit }) {
           {labels.map(({ i }) => (
             <circle key={i} cx={pts[i][0]} cy={pts[i][1]} r="2.5" className="hourly__dot" />
           ))}
+          {hour > 0 && hour < pts.length && (
+            <line x1={pts[hour][0]} x2={pts[hour][0]} y1={PAD.top - 8} y2={H - PAD.bottom} className="hourly__marker" />
+          )}
           <circle cx={pts[0][0]} cy={pts[0][1]} r="6" className="hourly__now" />
         </svg>
         {labels.map(({ h, i }) => (

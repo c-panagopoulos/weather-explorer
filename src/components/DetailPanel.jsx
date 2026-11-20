@@ -13,6 +13,8 @@ import {
   toUnit,
 } from '../utils/format.js'
 import { tempCss } from '../data/palette.js'
+import { describeNearest } from '../data/places.js'
+import { hourLabel } from './TimeSlider.jsx'
 import WeatherScene from './WeatherScene.jsx'
 import HourlyChart from './HourlyChart.jsx'
 
@@ -37,7 +39,7 @@ function compareLine(location, temperature, places, placesWeather, unit) {
     .join(' · ')
 }
 
-export default function DetailPanel({ location, unit, isSaved, places, placesWeather, onToggleSave, onClose, onShare }) {
+export default function DetailPanel({ location, unit, isSaved, places, placesWeather, onToggleSave, onClose, onShare, hour = 0 }) {
   const headingRef = useRef(null)
   const key = `${location.lat.toFixed(2)},${location.lon.toFixed(2)}`
   const { data, error, loading } = useAsync(() => fetchForecast(location.lat, location.lon), key)
@@ -51,12 +53,13 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
   const subtitle = location.name
     ? [location.admin1 !== location.name ? location.admin1 : '', location.country].filter(Boolean).join(', ') +
       (location.source === 'geo' ? ' · your location' : '')
-    : formatCoords(location.lat, location.lon)
+    : describeNearest(location.lat, location.lon) || formatCoords(location.lat, location.lon)
 
   const current = data?.current
   const weather = current ? describeWeather(current.code, current.isDay) : null
   const today = data?.daily[0]
   const vs = current ? compareLine(location, current.temperature, places, placesWeather, unit) : ''
+  const at = hour > 0 ? data?.hourly[hour] : null
   const weekMin = data ? Math.min(...data.daily.map((d) => d.min)) : 0
   const weekMax = data ? Math.max(...data.daily.map((d) => d.max)) : 1
   const pos = (t) => ((t - weekMin) / Math.max(weekMax - weekMin, 1)) * 100
@@ -106,10 +109,15 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
                 </span>
               )}
               {vs && <span className="now__vs">{vs}</span>}
+              {at && (
+                <span className="now__at">
+                  {hourLabel(hour)}: {formatTemp(at.temperature, unit)}, {describeWeather(at.code, at.isDay).label}
+                </span>
+              )}
             </span>
           </div>
         )}
-        {data && <HourlyChart hours={data.hourly} unit={unit} />}
+        {data && <HourlyChart hours={data.hourly} unit={unit} hour={hour} />}
       </WeatherScene>
 
       <div className="panel__body">
