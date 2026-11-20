@@ -2084,3 +2084,26 @@ button:active:not(:disabled) {
   border-radius: 24px;
   overflow: hidden;
 }
+
+/* My places sits at the far right of the top bar; header labels centred over their columns. */
+@media (min-width: 900px) {
+  .topbar__tools {
+    flex: 1;
+  }
+  .places-btn {
+    margin-left: auto;
+  }
+  .prow-head > span:nth-child(1) {
+    padding-left: 10px;
+  }
+  .prow-head > span:nth-child(2),
+  .prow-head > span:nth-child(4) {
+    text-align: center;
+  }
+  .chip-temp {
+    justify-self: center;
+  }
+  .prow__rain {
+    text-align: center;
+  }
+}

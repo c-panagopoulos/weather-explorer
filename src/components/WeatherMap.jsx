@@ -9,7 +9,10 @@ import { tempRgb } from '../data/palette.js'
 import { CITIES } from '../data/cities.js'
 import { PLACES, describeNearest } from '../data/places.js'
 
-const MOVE_DEBOUNCE_MS = 450
+const MOVE_DEBOUNCE_MS = 300
+// The field is loaded and drawn 30% beyond each edge of the screen, so a
+// drag reveals real colours straight away instead of stretched old ones.
+const FIELD_PAD = 0.3
 const MAX_CITIES = 24
 
 const TILES = {
@@ -51,10 +54,11 @@ function WeatherData({ onData, onSummary, onLoading }) {
     clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
       const b = map.getBounds()
+      const padded = b.pad(FIELD_PAD)
       const small = map.getSize().x < 640
       const { points } = gridPoints(
-        { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
-        { maxPoints: small ? 30 : 60 },
+        { south: padded.getSouth(), west: padded.getWest(), north: padded.getNorth(), east: padded.getEast() },
+        { maxPoints: small ? 45 : 90 },
       )
       const cities = CITIES.filter((c) => displayLonIn(b, c.lat, c.lon) != null).slice(0, MAX_CITIES)
       const id = ++requestId.current
@@ -65,7 +69,8 @@ function WeatherData({ onData, onSummary, onLoading }) {
         const cells = points.map((p) => ({ ...p, weather: weather.get(pointKey(p)) })).filter((c) => c.weather)
         const cityData = cities.map((c) => ({ ...c, weather: weather.get(pointKey(c)) })).filter((c) => c.weather)
         onData({ cells, cities: cityData })
-        onSummary({ cells, error: null })
+        // "In view" statistics only use the points actually on screen.
+        onSummary({ cells: cells.filter((c) => b.contains([c.lat, c.displayLon])), error: null })
       } catch (error) {
         if (id === requestId.current) onSummary({ cells: [], error })
       } finally {
@@ -98,12 +103,15 @@ function FieldLayer({ cells }) {
     const canvas = canvasRef.current
     if (!canvas) return
     canvas.classList.remove('is-zooming')
-    const size = map.getSize()
+    const view = map.getSize()
+    const ox = Math.round(view.x * FIELD_PAD)
+    const oy = Math.round(view.y * FIELD_PAD)
+    const size = { x: view.x + 2 * ox, y: view.y + 2 * oy }
     canvas.width = size.x
     canvas.height = size.y
     canvas.style.width = `${size.x}px`
     canvas.style.height = `${size.y}px`
-    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]))
+    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([-ox, -oy]))
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, size.x, size.y)
     const data = cellsRef.current
@@ -115,7 +123,7 @@ function FieldLayer({ cells }) {
     const H = Math.ceil(size.y / S) + 2 * M
     const pts = data.map((c) => {
       const p = map.latLngToContainerPoint([c.lat, c.displayLon])
-      return [p.x / S + M - 0.5, p.y / S + M - 0.5, c.weather.temperature]
+      return [(p.x + ox) / S + M - 0.5, (p.y + oy) / S + M - 0.5, c.weather.temperature]
     })
     const small = document.createElement('canvas')
     small.width = W
@@ -366,8 +374,14 @@ function Probe({ cells, unit, onSelect, touch }) {
 
   useEffect(() => {
     const el = map.getContainer()
+    // Leaflet focuses the map on mouse/touch too; only keyboard focus shows the crosshair.
+    let pointerAt = 0
+    const onPointer = () => {
+      pointerAt = Date.now()
+      setKbd(false)
+    }
     const onFocus = (e) => {
-      if (e.target === el && el.matches(':focus-visible')) {
+      if (e.target === el && Date.now() - pointerAt > 600 && el.matches(':focus-visible')) {
         setKbd(true)
         setPointer(null)
         map.fire('moveend')
@@ -380,10 +394,12 @@ function Probe({ cells, unit, onSelect, touch }) {
       const c = map.getCenter()
       onSelect({ lat: c.lat, lon: L.Util.wrapNum(c.lng, [-180, 180]), source: 'map' })
     }
+    el.addEventListener('pointerdown', onPointer)
     el.addEventListener('focus', onFocus)
     el.addEventListener('blur', onBlur)
     el.addEventListener('keydown', onKey)
     return () => {
+      el.removeEventListener('pointerdown', onPointer)
       el.removeEventListener('focus', onFocus)
       el.removeEventListener('blur', onBlur)
       el.removeEventListener('keydown', onKey)

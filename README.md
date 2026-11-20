@@ -76,11 +76,11 @@ Copied into `src/components/bits/`, plain-CSS variants, under React Bits' **MIT 
 
 The brief asks to be careful with requests. All weather calls go through one small cache layer (`src/api/cache.js`):
 
-- **Multi-location batching.** The map overview asks for up to 60 grid points (30 on phones) **plus the visible cities** in **one** request, using Open-Meteo's comma-separated coordinates. Saved places' current values come from one batched call as well.
+- **Multi-location batching.** The map overview asks for up to 90 grid points (45 on phones), covering the screen plus a 30% margin so a drag shows real colours at once, **plus the visible cities**, in **one** request, using Open-Meteo's comma-separated coordinates. Saved places' current values come from one batched call as well.
 - **Snapped grid.** Grid points sit on fixed multiples of the grid step (for example every 2° over a country, 30° over the whole world), not on the screen. Small pans therefore land on points that are already cached, and only the new edge is fetched.
 - **15-minute TTL cache.** This matches how often Open-Meteo updates current conditions, so cached data is never staler than the source. Forecasts are cached per location, rounded to 2 decimals (about 1 km), so nearby clicks share an entry.
 - **In-flight de-duplication.** Two components asking for the same thing at the same moment share one request.
-- **Debouncing.** Map moves wait 450 ms after the user stops moving. Search waits 300 ms after typing stops and needs at least 2 characters. Search results are cached for a day.
+- **Debouncing.** Map moves wait 300 ms after the user stops moving. Search waits 300 ms after typing stops and needs at least 2 characters. Search results are cached for a day.
 - **°C/°F is converted on the client**, so switching units never triggers a request.
 - **My places loads forecasts lazily.** Today's low/high and rain chance need each place's forecast, so they are fetched only while the list is open, and go through the same 15-minute cache (opening a place's details later costs nothing).
 - **Search results** show a place's weather only when it is already cached. Searching never triggers weather requests.
