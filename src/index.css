@@ -2155,3 +2155,27 @@ button:active:not(:disabled) {
     animation: none;
   }
 }
+
+/* Map layer switch (desktop), below the top bar on the left */
+.layer-switch {
+  position: absolute;
+  left: 20px;
+  top: 78px;
+  z-index: 1000;
+  animation: in 0.5s var(--ease) 0.12s backwards;
+}
+.layer-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+@media (min-width: 900px) {
+  .legend-card__spot {
+    grid-template-columns: 64px auto minmax(0, 1fr);
+  }
+  .legend-card__spot strong {
+    white-space: nowrap;
+  }
+}

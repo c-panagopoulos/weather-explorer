@@ -99,7 +99,7 @@ export function normalizeForecast(data) {
  * Current conditions for many points at once (map overview + saved places).
  * Cached points are skipped; the rest go out in as few multi-location
  * requests as possible (Open-Meteo accepts comma-separated coordinates).
- * Returns a Map of pointKey -> { temperature, code, isDay, hours: [24 × same] }.
+ * Returns a Map of pointKey -> { temperature, code, isDay, wind, rain, hours: [24 × same] }.
  */
 export async function fetchCurrentBatch(points) {
   const results = new Map()
@@ -116,10 +116,10 @@ export async function fetchCurrentBatch(points) {
     const params = new URLSearchParams({
       latitude: chunk.map((p) => round2(p.lat)).join(','),
       longitude: chunk.map((p) => round2(p.lon)).join(','),
-      current: 'temperature_2m,weather_code,is_day',
-      // The next 24 hours in the same request, so the time slider can move
-      // the whole map without any extra requests.
-      hourly: 'temperature_2m,weather_code,is_day',
+      current: 'temperature_2m,weather_code,is_day,wind_speed_10m',
+      // The next 24 hours in the same request, so the time slider and the
+      // rain / wind layers work without any extra requests.
+      hourly: 'temperature_2m,weather_code,is_day,precipitation_probability,wind_speed_10m',
       forecast_hours: '24',
     })
     const data = await getJson(`${FORECAST_URL}?${params}`)
@@ -131,10 +131,15 @@ export async function fetchCurrentBatch(points) {
         temperature: d.current.temperature_2m,
         code: d.current.weather_code,
         isDay: d.current.is_day === 1,
+        wind: d.current.wind_speed_10m,
+        // Chance of rain for the current hour (there is no "current" value for it).
+        rain: d.hourly?.precipitation_probability?.[0] ?? 0,
         hours: (d.hourly?.time ?? []).map((_, h) => ({
           temperature: d.hourly.temperature_2m[h],
           code: d.hourly.weather_code[h],
           isDay: d.hourly.is_day[h] === 1,
+          rain: d.hourly.precipitation_probability?.[h] ?? 0,
+          wind: d.hourly.wind_speed_10m?.[h] ?? 0,
         })),
       }
       setCached(`current:${key}`, value, WEATHER_TTL)

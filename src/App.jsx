@@ -11,6 +11,8 @@ import { formatCoords, formatTemp } from './utils/format.js'
 import { describeNearest, nearestName } from './data/places.js'
 import TimeSlider from './components/TimeSlider.jsx'
 import { atHour } from './data/hourly.js'
+import { LAYERS } from './data/layers.js'
+import LayersMenu, { LayerSwitch } from './components/LayersMenu.jsx'
 import { LegendCard, LegendChip } from './components/Legend.jsx'
 
 // Stable id for a place: geocoding id when we have one, otherwise its rounded coordinates.
@@ -55,6 +57,7 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
   const [hour, setHour] = useState(0)
+  const [layer, setLayer] = useState('temperature')
   const [playing, setPlaying] = useState(false)
   const reducedMotion = useReducedMotion()
 
@@ -238,21 +241,23 @@ export default function App() {
 
   // Cells at the slider hour, so "In view" follows the timeline too.
   const cells = overview.cells.map((c) => ({ ...c, weather: atHour(c.weather, hour) }))
-  const raw = cells.length
-    ? cells.reduce(
-        (acc, c) => ({
-          lo: c.weather.temperature < acc.lo.weather.temperature ? c : acc.lo,
-          hi: c.weather.temperature > acc.hi.weather.temperature ? c : acc.hi,
-        }),
-        { lo: cells[0], hi: cells[0] },
-      )
-    : null
-  const extremes = raw && {
-    lo: { ...raw.lo, name: nearestName(raw.lo.lat, raw.lo.lon) },
-    hi: { ...raw.hi, name: nearestName(raw.hi.lat, raw.hi.lon) },
+  // Lowest and highest point in view for a layer (coldest/warmest, driest/wettest, calmest/windiest).
+  const extremesFor = (id) => {
+    if (!cells.length) return null
+    const v = (c) => LAYERS[id].value(c.weather)
+    const r = cells.reduce((acc, c) => ({ lo: v(c) < v(acc.lo) ? c : acc.lo, hi: v(c) > v(acc.hi) ? c : acc.hi }), {
+      lo: cells[0],
+      hi: cells[0],
+    })
+    return {
+      lo: { ...r.lo, name: nearestName(r.lo.lat, r.lo.lon) },
+      hi: { ...r.hi, name: nearestName(r.hi.lat, r.hi.lon) },
+    }
   }
+  const extremes = extremesFor(layer)
+  const tempExtremes = layer === 'temperature' ? extremes : extremesFor('temperature')
   const openSpot = (c) => select({ lat: c.lat, lon: c.lon, source: 'search' })
-  const layoutKey = `${selected ? selected.id : '-'}|${placesOpen}|${places.length}|${!!overview.error}|${legendOpen}|${chipOpen}|${hour}`
+  const layoutKey = `${selected ? selected.id : '-'}|${placesOpen}|${places.length}|${!!overview.error}|${legendOpen}|${chipOpen}|${hour}|${layer}`
 
   return (
     <div className={`app ${selected ? 'has-panel' : ''} ${placesOpen ? 'places-open' : ''}`}>
@@ -272,6 +277,7 @@ export default function App() {
           layoutKey={layoutKey}
           probeHidden={!!selected && !isDesktop()}
           hour={hour}
+          layer={layer}
         />
 
         <header className="topbar">
@@ -341,7 +347,12 @@ export default function App() {
         </header>
 
         <div className="mapbar mobile-only">
-          <LegendChip open={chipOpen} onToggle={() => setChipOpen((o) => !o)} />
+          <LegendChip open={chipOpen} onToggle={() => setChipOpen((o) => !o)} layer={layer} />
+          <LayersMenu layer={layer} onChange={setLayer} />
+        </div>
+
+        <div className="desktop-only">
+          <LayerSwitch layer={layer} onChange={setLayer} />
         </div>
 
         <div className="desktop-only">
@@ -352,11 +363,12 @@ export default function App() {
             unit={unit}
             hour={hour}
             onOpenSpot={openSpot}
+            layer={layer}
           />
         </div>
         <p className="sr-only" role="status" aria-live="polite">
           {extremes &&
-            `Coldest in view ${extremes.lo.name} ${formatTemp(extremes.lo.weather.temperature, unit, { withUnit: true })}; warmest ${extremes.hi.name} ${formatTemp(extremes.hi.weather.temperature, unit, { withUnit: true })}.`}
+            `${LAYERS[layer].extremes[0]} in view ${extremes.lo.name}, ${LAYERS[layer].formatLong(LAYERS[layer].value(extremes.lo.weather), unit)}; ${LAYERS[layer].extremes[1].toLowerCase()} ${extremes.hi.name}, ${LAYERS[layer].formatLong(LAYERS[layer].value(extremes.hi.weather), unit)}.`}
         </p>
 
         {overview.error && (
@@ -375,7 +387,7 @@ export default function App() {
           onToggle={() => setPlacesOpen((o) => !o)}
           onSelect={selectFromPlaces}
           onRemove={removePlace}
-          extremes={extremes}
+          extremes={tempExtremes}
           onOpenSpot={openSpot}
           hour={hour}
         />

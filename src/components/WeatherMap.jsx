@@ -4,11 +4,10 @@ import { MapContainer, Marker, TileLayer, ZoomControl, useMap, useMapEvents } fr
 import { fetchCurrentBatch, pointKey } from '../api/openMeteo.js'
 import { gridPoints } from '../utils/grid.js'
 import { describeWeather } from '../utils/weatherCodes.js'
-import { formatTemp } from '../utils/format.js'
-import { tempRgb } from '../data/palette.js'
 import { CITIES } from '../data/cities.js'
 import { PLACES, describeNearest } from '../data/places.js'
 import { atHour } from '../data/hourly.js'
+import { LAYERS } from '../data/layers.js'
 
 const MOVE_DEBOUNCE_MS = 300
 // The field is loaded and drawn 30% beyond each edge of the screen, so a
@@ -94,13 +93,15 @@ function WeatherData({ onData, onSummary, onLoading }) {
  * in Leaflet's overlay pane, so it pans with the map and is redrawn when
  * movement ends. The old field stays visible until new data arrives.
  */
-function FieldLayer({ cells, hour }) {
+function FieldLayer({ cells, hour, layer }) {
   const map = useMap()
   const canvasRef = useRef(null)
   const cellsRef = useRef(cells)
   cellsRef.current = cells
   const hourRef = useRef(hour)
   hourRef.current = hour
+  const layerRef = useRef(layer)
+  layerRef.current = layer
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -127,9 +128,10 @@ function FieldLayer({ cells, hour }) {
     // When zoomed out, the screen shows more than one copy of the world, but
     // each grid point exists once. Repeat every point on the neighbouring
     // copies (±360°) so the whole screen gets the right colours.
+    const lyr = LAYERS[layerRef.current]
     const pts = []
     for (const c of data) {
-      const t = atHour(c.weather, hourRef.current).temperature
+      const t = lyr.value(atHour(c.weather, hourRef.current))
       for (const k of [-720, -360, 0, 360, 720]) {
         const p = map.latLngToContainerPoint([c.lat, c.lon + k])
         const x = p.x + ox
@@ -159,12 +161,12 @@ function FieldLayer({ cells, hour }) {
           num += w * t
           den += w
         }
-        const [r, g, b] = tempRgb(exact ?? num / den)
+        const [r, g, b, a] = lyr.rgba(exact ?? num / den)
         const k = (y * W + x) * 4
         img.data[k] = r
         img.data[k + 1] = g
         img.data[k + 2] = b
-        img.data[k + 3] = 255
+        img.data[k + 3] = a
       }
     }
     sctx.putImageData(img, 0, 0)
@@ -191,7 +193,7 @@ function FieldLayer({ cells, hour }) {
 
   useEffect(() => {
     draw()
-  }, [cells, hour, draw])
+  }, [cells, hour, layer, draw])
 
   return null
 }
@@ -203,7 +205,8 @@ const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b
  * Labels are placed greedily (right, then left, otherwise dropped) so they never
  * overlap each other or any floating panel (elements marked data-obstacle).
  */
-function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, hour }) {
+function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, hour, layer }) {
+  const lyr = LAYERS[layer]
   const map = useMap()
   const [items, setItems] = useState([])
 
@@ -233,7 +236,9 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, ho
       if (sx < 12 || sx > size.x - 12 || sy < 30 || sy > size.y - 12) continue
       const dot = [sx - 10, sy - 10, sx + 10, sy + 10]
       if (obstacles.some((o) => overlaps(o, dot)) || boxes.some((b) => overlaps(b, dot))) continue
-      const lw = Math.round(Math.max(it.name.length * 7.6 + 8, 50))
+      // Wide enough for the name and the value ("18 km/h" is wider than "18°").
+      const valueLen = lyr.format(lyr.value(atHour(it.weather, hour)), unit).length
+      const lw = Math.round(Math.max(it.name.length * 7.6 + 8, valueLen * 15, 50))
       const right = [sx + 12, sy - 25, sx + 12 + lw, sy + 16]
       const left = [sx - 12 - lw, sy - 25, sx - 12, sy + 16]
       const ok = (b) =>
@@ -249,7 +254,7 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, ho
       out.push({ ...it, displayLon: dl, side, lw })
     }
     setItems(out)
-  }, [map, places, placesWeather, cities])
+  }, [map, places, placesWeather, cities, lyr, hour, unit])
 
   useMapEvents({ moveend: compute, zoomend: compute, resize: compute })
   useEffect(() => {
@@ -263,14 +268,14 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, ho
 
   return items.map((it) => {
     const w = atHour(it.weather, hour)
-    const t = formatTemp(w.temperature, unit)
+    const t = lyr.format(lyr.value(w), unit)
     const label = describeWeather(w.code, w.isDay).label
     const html = `<span class="ro ro--${it.side ?? 'none'}${it.saved ? ' ro--saved' : ''}"><span class="ro__dot"></span>${
       it.side
         ? `<span class="ro__label" style="width:${it.lw}px"><span class="ro__t">${t}</span><span class="ro__n">${escapeHtml(it.name)}</span></span>`
         : ''
     }</span>`
-    const aria = `${it.saved ? 'Saved place' : 'City'}: ${it.name}, ${hour ? `in ${hour} hours ` : ''}${formatTemp(w.temperature, unit, { withUnit: true })}, ${label}`
+    const aria = `${it.saved ? 'Saved place' : 'City'}: ${it.name}, ${hour ? `in ${hour} hours ` : ''}${lyr.formatLong(lyr.value(w), unit)}, ${label}`
     return (
       <Marker
         // Re-mount when the content changes so the aria-label lands on the new element.
@@ -295,7 +300,7 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, ho
 }
 
 // Interpolated temperature (same IDW as the field) and the nearest cell's condition at a screen point.
-function sampleAt(map, cells, x, y, hour) {
+function sampleAt(map, cells, x, y, hour, layer) {
   let num = 0
   let den = 0
   let nearest = null
@@ -310,7 +315,7 @@ function sampleAt(map, cells, x, y, hour) {
       nearestD = d2
       nearest = c
     }
-    const t = atHour(c.weather, hour).temperature
+    const t = LAYERS[layer].value(atHour(c.weather, hour))
     if (d2 < 0.01) return { temperature: t, cell: c }
     const w = 1 / (d2 * Math.sqrt(d2))
     num += w * t
@@ -329,7 +334,8 @@ const SNAP_PX = 48
  * - touch (< 640px): the ring stays in the centre and the map is dragged under
  *   it; it snaps to a nearby city, and tapping it opens the forecast.
  */
-function Probe({ cells, unit, onSelect, touch, hour }) {
+function Probe({ cells, unit, onSelect, touch, hour, layer }) {
+  const lyr = LAYERS[layer]
   const map = useMap()
   const [pointer, setPointer] = useState(null)
   const [kbd, setKbd] = useState(false)
@@ -368,7 +374,7 @@ function Probe({ cells, unit, onSelect, touch, hour }) {
     if (!cells.length) return null
     const ll = map.containerPointToLatLng([x, y])
     const lon = L.Util.wrapNum(ll.lng, [-180, 180])
-    const { temperature, cell } = sampleAt(map, cells, x, y, hour)
+    const { temperature, cell } = sampleAt(map, cells, x, y, hour, layer)
     const w = atHour(cell.weather, hour)
     const cond = describeWeather(w.code, w.isDay).label
     const name = snapped ? `${snapped.name}, ${snapped.country}` : describeNearest(ll.lat, lon)
@@ -387,7 +393,7 @@ function Probe({ cells, unit, onSelect, touch, hour }) {
       const info = describe(c.x, c.y, c.snapped)
       if (info)
         setAnnounce(
-          `Map centre, ${info.name}: ${formatTemp(info.temperature, unit, { withUnit: true })}, ${info.cond}. Press Enter to open the forecast.`,
+          `Map centre, ${info.name}: ${lyr.formatLong(info.temperature, unit)}, ${info.cond}. Press Enter to open the forecast.`,
         )
     },
   })
@@ -455,7 +461,7 @@ function Probe({ cells, unit, onSelect, touch, hour }) {
               ref={ringRef}
               type="button"
               className="probe__ring probe__ring--btn"
-              aria-label={`Open the forecast for ${info.name}: ${formatTemp(info.temperature, unit, { withUnit: true })}, ${info.cond}`}
+              aria-label={`Open the forecast for ${info.name}: ${lyr.formatLong(info.temperature, unit)}, ${info.cond}`}
               onClick={() =>
                 onSelect(
                   view.snapped
@@ -475,7 +481,7 @@ function Probe({ cells, unit, onSelect, touch, hour }) {
             data-obstacle={mode === 'touch' ? '' : undefined}
           >
             <span className="probe__value">
-              <span className="probe__temp">{formatTemp(info.temperature, unit)}</span>
+              <span className="probe__temp">{lyr.format(info.temperature, unit)}</span>
               <span className="probe__cond">{info.cond}</span>
             </span>
             <span className="probe__name">{info.name}</span>
@@ -558,6 +564,7 @@ export default function WeatherMap({
   layoutKey,
   probeHidden,
   hour = 0,
+  layer = 'temperature',
 }) {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState({ cells: [], cities: [] })
@@ -593,9 +600,9 @@ export default function WeatherMap({
         <TileLayer key={scheme} url={TILES[scheme]} attribution={ATTRIBUTION} maxNativeZoom={16} />
         <ZoomControl position="bottomright" />
         <WeatherData onData={setData} onSummary={onSummary} onLoading={setLoading} />
-        <FieldLayer cells={data.cells} hour={hour} />
+        <FieldLayer cells={data.cells} hour={hour} layer={layer} />
         <ClickToExplore onSelect={onSelect} />
-        {!probeHidden && <Probe cells={data.cells} unit={unit} onSelect={onSelect} touch={isSmall} hour={hour} />}
+        {!probeHidden && <Probe cells={data.cells} unit={unit} onSelect={onSelect} touch={isSmall} hour={hour} layer={layer} />}
         <FlyToSelection selected={selected} reducedMotion={reducedMotion} />
         <Readouts
           places={places}
@@ -605,6 +612,7 @@ export default function WeatherMap({
           onSelect={onSelect}
           layoutKey={layoutKey}
           hour={hour}
+          layer={layer}
         />
         {selected && (
           <Marker
