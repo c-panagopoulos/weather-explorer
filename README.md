@@ -4,17 +4,28 @@ Explore the weather anywhere in the world, like a TV weather forecast where you 
 
 **Live demo:** https://c-panagopoulos.github.io/weather-explorer/
 
-- **See the whole picture first.** The map is covered with a smooth, colour-coded temperature field, in the style of a TV forecast. It follows you as you pan and zoom, so you can see how the weather changes from place to place. Your saved places and about 30 major cities show their values, placed so labels never overlap each other or sit under a panel. A collapsible legend card explains the colours and links to the coldest and warmest spot on screen.
-- **Dive into any place.** Search for a city, or tap anywhere on the map (including the open sea) to see current conditions, feels-like temperature, humidity, wind, sunrise and sunset, a 24-hour chart and a 7-day forecast with low–high range bars. A line compares it with your saved places ("6° warmer than Lisbon · 7° colder than Cairo"), and *Share link* copies a URL that reopens the same place and unit.
-- **See it, don't just read it.** The details open with a photo of the place (Athens shows the Acropolis). The current weather is animated on top of it: rain, drizzle, snow, fog, drifting clouds, sunshine or lightning. **When it is night there, the scene uses a night photo** (Sydney Harbour Bridge lit up, Shinjuku at night) when one exists, and otherwise darkens the day photo. Points picked on the map borrow the photo of the nearest city, or of the country or region in remote areas.
-- **Build your own picture of the world's weather.** Save a place to add it to *My places*. Each place shows its temperature now, today's low and high on one shared scale, and the chance of rain. You can sort by warmest, coldest, A–Z or the order you added them, and removing a place can be undone. The list is kept in `localStorage`, so it is still there after a reload.
-- **Read the weather anywhere.** A probe follows the mouse and shows the interpolated temperature, the condition and the nearest place ("Near Ioannina, Greece"), named from a bundled list of about 300 cities with no network calls. With the keyboard, focus the map: a crosshair appears, the arrow keys pan, Enter opens the forecast and a live region reads the value out. On phones the ring stays in the centre and you drag the map under it; it snaps to nearby cities.
-- **Temperature, rain and wind layers.** Switch the map between temperature, chance of rain and wind speed. Each layer has its own colours, legend, city values, probe readout and extremes ("Driest / Wettest", "Calmest / Windiest"). Rain and wind fade out where it is dry or calm, so the base map stays readable.
-- **Look ahead.** A 24-hour time slider (with Play; it shows "+2 h" on the left and the resulting time on your clock, e.g. 17:16, on the right) moves the whole picture through the next 24 hours: the map colours, city and place values, the probe, "In view" and the open place; *My places* also has a **Chart** view with every place's next 24 hours in one chart.
-- **Weather where you are.** *My location* uses the browser's geolocation and puts a city name on the result.
-- **Layout:** the map belongs to you. Search, location, units and a *My places* dropdown sit in the top bar; the legend sits bottom left; a slim timeline sits centred on the free map area; the right side is only for the place you open. On phones everything fits one top row, with a small legend chip below it, and My places is a drawer that slides up.
-- **Subtle motion:** panels slide or pop in, charts draw themselves, and temperatures count up to their value. All of it turns off with reduced motion.
-- **°C / °F** toggle, remembered between visits. **Dark by default**, with a light theme that follows the system setting.
+## What it does
+
+- **See the whole picture.** A smooth colour field covers the map, like a TV forecast, and follows you as you pan and zoom. Switch it between **temperature, chance of rain and wind**. Your saved places and about 30 major cities show their values. The labels are placed so they never overlap each other or sit under a panel. A collapsible legend explains the colours and links to the coldest and warmest spot on screen (or the driest/wettest, calmest/windiest).
+- **Look ahead.** A 24-hour timeline (with Play) moves the whole picture through the forecast: map colours, city and place values, the probe and the open place. It shows "+2 h" on the left and the resulting time on your clock (e.g. 17:16) on the right.
+- **Read any spot.** A probe follows the mouse and shows the value, the condition and the nearest place ("Near Ioannina, Greece"). The names come from a bundled list of about 300 cities, with no network calls.
+  - **Keyboard:** focus the map and a crosshair appears; the arrow keys pan and Enter opens the forecast.
+  - **Phones:** a ring stays in the centre while you drag the map under it.
+- **Dive into a place.** Search for a city, or click anywhere (even the open sea). The details show:
+  - current conditions and a comparison with your places ("6° warmer than Lisbon · 7° colder than Cairo")
+  - a 24-hour chart and a 7-day forecast
+  - a *Share link* that reopens the same place, unit and hour
+- **See it, don't just read it.** The details open on a photo of the place (Athens shows the Acropolis) with the current weather animated on top: rain, snow, fog, clouds, sun or lightning.
+  - **At night** there it uses a night photo (Sydney Harbour Bridge lit up), or darkens the day photo when no night photo exists.
+  - **Points on the map** borrow the photo of the nearest city or region.
+- **Build your own picture.** Save places to *My places* and compare them:
+  - now, today's low–high on one shared scale, and chance of rain
+  - sorted, as a list or as one 24-hour chart
+  - remove with Undo; the list is kept in `localStorage`
+- **Weather where you are** with *My location*.
+- **°C / °F**, remembered. **Dark by default**, with a light theme that follows the system.
+
+**Layout.** On desktop, search, location, units and a *My places* dropdown sit in the top bar. The legend is at the bottom left, the timeline is centred on the free map area, and the right side belongs to the open place. On phones the controls fit one top row, *My places* is a drawer that slides up, and the details open as a bottom sheet.
 
 ## 1. Installation and setup
 
@@ -27,8 +38,6 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Other scripts:
-
 | Command           | What it does                       |
 | ----------------- | ---------------------------------- |
 | `npm test`        | Unit tests (Vitest)                |
@@ -36,97 +45,107 @@ Other scripts:
 | `npm run preview` | Serve the production build locally |
 | `npm run lint`    | Lint with oxlint                   |
 
-**Environment variables:** none. Open-Meteo, Wikipedia and BigDataCloud's client-side endpoint all work without API keys.
+**Environment variables:** none. Every service used works without an API key.
 
-Geolocation only works on `localhost` or over HTTPS, a browser rule. The live demo is served over HTTPS.
+Geolocation only works on `localhost` or over HTTPS (a browser rule). The live demo is served over HTTPS.
 
 ## 2. Implementation choices
 
 | Choice | Why |
 | --- | --- |
-| **React 19 + Vite**, plain **JavaScript** | Fast to build and run with almost no configuration. Plain JS keeps the code easy to follow. |
-| **Leaflet + react-leaflet** | A mature, light, free map with no API key. It handles touch, keyboard panning and zoom well. Base map: **Esri Canvas Dark / Light Gray** tiles, which keep the colour field readable. |
-| **Canvas temperature field** | The grid values are interpolated with inverse distance weighting on a coarse canvas, then upscaled with a blur and blended over the tiles. The canvas sits in Leaflet's overlay pane, so it pans with the map at no cost and is redrawn only when movement ends. |
-| **No UI or chart library** | The 24-hour chart is a small hand-written SVG (a Catmull-Rom curve with HTML labels laid over it) and all styling is plain CSS with theme variables. Fewer dependencies, full control over accessibility. Fonts: Hanken Grotesk and IBM Plex Mono from Google Fonts. |
-| **Animations** | Plain CSS keyframes, plus three components from [React Bits](https://reactbits.dev) (see below). |
-| **Vitest** | Unit tests for the logic that matters most: grid generation, caching, unit conversion, weather-code mapping and forecast normalisation. |
+| **React 19 + Vite**, plain **JavaScript** | Fast to build and run with almost no configuration; plain JS keeps the code easy to follow. |
+| **Leaflet + react-leaflet** | A mature, light, free map that handles touch, keyboard panning and zoom. Base map: **Esri Canvas Dark / Light Gray** tiles, which keep the colour field readable. |
+| **Canvas colour field** | Grid values are interpolated with inverse distance weighting on a coarse canvas, upscaled with a blur and blended over the tiles. It lives in Leaflet's overlay pane, so it pans with the map for free. It is drawn 30% beyond the screen, so a drag shows real colours at once, and repeated on every copy of the world when zoomed out. |
+| **No UI or chart library** | The charts are small hand-written SVGs (with HTML labels laid over them) and the styling is plain CSS with theme variables. This means fewer dependencies and full control over accessibility. Fonts: Hanken Grotesk and IBM Plex Mono. |
+| **React Bits** (see below) | Three ready-made components for the finishing touches: rolling numbers, an elastic timeline and a subtle glow. |
+| **Vitest** | Unit tests for the core logic: grid generation, caching, unit conversion, weather codes and forecast parsing. |
 | **GitHub Actions → GitHub Pages** | Each push to `main` runs the tests, builds and deploys the live demo. |
 
-**Third-party runtime dependencies:** `react`, `react-dom`, `leaflet`, `react-leaflet`, and `motion` (needed by React Bits' CountUp).
+**Runtime dependencies:** `react`, `react-dom`, `leaflet`, `react-leaflet`, and `motion` (used by React Bits' CountUp).
 
 ### React Bits components
 
-Copied into `src/components/bits/`, plain-CSS variants, under React Bits' **MIT + Commons Clause** licence (© David Haz). The licence allows use as part of an application; it forbids selling or redistributing the components on their own. The licence text is in `src/components/bits/LICENSE.md`, and each file keeps the copyright notice.
+Copied into `src/components/bits/` under React Bits' **MIT + Commons Clause** licence (© David Haz). The licence allows use inside an application and forbids selling or redistributing the components on their own. The licence text is in `src/components/bits/LICENSE.md`, and each file keeps its copyright notice.
 
 | Component | Where | Notes |
 | --- | --- | --- |
-| **CountUp** (roll mode) | The big temperature in the details; the *Now* chips in My places. Digits roll when a place opens or the time slider changes the hour | The animated copy is `aria-hidden`; screen readers get the final value from sr-only text. It skips the animation with reduced motion. |
-| **Elastic Slider** | The timeline | `role="slider"` with arrow keys, Page Up/Down, Home/End, `aria-valuetext` ("6 hours from now") and a focus ring. Changes: removed its `@hugeicons` default icons (no extra dependency), and fixed an animation-frame id that was not reset on unmount, which froze the fill after a React StrictMode remount. |
-| **Spotlight Card** | The legend card, the My places dropdown and the details panel | A small, soft glow in the accent colour that follows the cursor. Only on pointer devices (`hover: hover`), and off with reduced motion. |
+| **CountUp** (roll mode) | Big temperature in the details; *Now* chips in My places | The digits roll when a place opens or the hour changes. The animated copy is `aria-hidden`, so screen readers hear only the final value. It skips the animation with reduced motion. |
+| **Elastic Slider** | Timeline | `role="slider"` with arrow keys, Page Up/Down, Home/End, `aria-valuetext` ("2 hours from now, 17:16 your time") and a focus ring. My changes: I removed its `@hugeicons` default icons (to avoid an extra dependency), and I fixed an animation-frame id that was not reset on unmount, which froze the fill after a React StrictMode remount. |
+| **Spotlight Card** | Legend, My places dropdown, details panel | A small, soft glow in the accent colour. It appears only on pointer devices and is off with reduced motion. |
 
-**Animated List** was not used: it is a selectable `listbox` of `option`s, and our rows contain buttons (open, remove), which would break those semantics. A small FLIP hook of my own (`useFlip.js`) gives the same effect: new places slide in, and re-sorting glides rows to their new place.
+I did not use **Animated List**. It is a selectable `listbox`, and our rows contain buttons, which would break those semantics. A small FLIP hook of my own (`useFlip.js`) gives the same effect.
 
-**External services:**
+### External services
 
-- [Open-Meteo Forecast API](https://open-meteo.com/en/docs) for all weather data.
-- [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) for the search box.
-- [Wikipedia REST API](https://en.wikipedia.org/api/rest_v1/) (`page/summary`) and the [Wikimedia Commons API](https://commons.wikimedia.org/w/api.php) for city photos. The Wikipedia lead image is used by day, unless it is a collage, a portrait image or a map; then, and for night photos, one Commons search finds a landscape photo. Results are cached for a day, so a place costs at most two photo requests. If nothing is found, or an image fails to load, the scene falls back to a gradient that matches the weather.
-- [BigDataCloud client-side reverse geocoding](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api), used **only** to put a name on the user's own geolocation result. Open-Meteo has no reverse geocoding. If the call fails, the app shows "Your location".
+- **[Open-Meteo Forecast](https://open-meteo.com/en/docs) and [Geocoding](https://open-meteo.com/en/docs/geocoding-api) APIs** provide all the weather data and the search.
+- **[Wikipedia REST](https://en.wikipedia.org/api/rest_v1/) and [Wikimedia Commons](https://commons.wikimedia.org/w/api.php) APIs** provide the photos. The app uses the Wikipedia lead image, unless that image is a collage, a portrait image or a map. In that case, and for night photos, one Commons search finds a landscape photo instead. Results are cached for a day. When there is no photo, a gradient that matches the weather is shown.
+- **[BigDataCloud client-side reverse geocoding](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api)** is used **only** to name the user's own location (Open-Meteo has no reverse geocoding).
 
 ### Staying within Open-Meteo's limits
 
-The brief asks to be careful with requests. All weather calls go through one small cache layer (`src/api/cache.js`):
+The brief asks to be careful with requests. All weather calls go through one cache layer (`src/api/cache.js`):
 
-- **Multi-location batching.** The map overview asks for up to 90 grid points (45 on phones), covering the screen plus a 30% margin so a drag shows real colours at once, **plus the visible cities**, in **one** request, using Open-Meteo's comma-separated coordinates. The same request also returns the next 24 hours of temperature, chance of rain and wind for every point (`forecast_hours=24`), so neither the time slider nor switching layers ever makes a request. Saved places' current values come from one batched call as well.
-- **Snapped grid.** Grid points sit on fixed multiples of the grid step (for example every 2° over a country, 30° over the whole world), not on the screen. Small pans therefore land on points that are already cached, and only the new edge is fetched.
-- **15-minute TTL cache.** This matches how often Open-Meteo updates current conditions, so cached data is never staler than the source. Forecasts are cached per location, rounded to 2 decimals (about 1 km), so nearby clicks share an entry.
-- **In-flight de-duplication.** Two components asking for the same thing at the same moment share one request.
-- **Debouncing.** Map moves wait 300 ms after the user stops moving. Search waits 300 ms after typing stops and needs at least 2 characters. Search results are cached for a day.
-- **°C/°F is converted on the client**, so switching units never triggers a request.
-- **My places loads forecasts lazily.** Today's low/high and rain chance need each place's forecast, so they are fetched only while the list is open, and go through the same 15-minute cache (opening a place's details later costs nothing).
-- **Search results** show a place's weather only when it is already cached. Searching never triggers weather requests.
-- Rate-limit responses (HTTP 429) pause only the weather layer, with a clear message. The map and search keep working.
+- **One batched request per map move.** It covers up to 54 grid points (32 on phones) plus up to 16 visible cities, using comma-separated coordinates. The same request also returns the **next 24 hours of temperature, rain chance and wind** (`forecast_hours=24`), so the timeline and the layer switch never make a request.
+- **Snapped grid.** Points sit on fixed multiples of the grid step (e.g. every 2° over a country), so small pans reuse cached points.
+- **15-minute cache** (how often Open-Meteo updates current conditions) and **in-flight de-duplication**. Forecasts are cached per location, rounded to about 1 km.
+- **Debouncing:** 300 ms after the map stops moving; 300 ms and at least 2 characters for search.
+- **No hidden requests:** °C/°F is converted on the client; search results only show weather that is already cached; My places loads today's forecasts only while the list is open.
+- **Rate limits (HTTP 429)** pause only the weather layer, with a clear message, and the app **retries by itself after a minute**.
 
 ### Accessibility and mobile
 
-- **Mobile first.** On phones the map fills the screen, My places is a peek sheet you can expand ("Compare"), and the details open as a bottom sheet. From 900 px wide they become floating panels. Touch targets are at least 44 px, and the search input uses 16 px text so iOS does not zoom in on focus.
-- **Keyboard.** Every feature works without a mouse. The search box follows the WAI-ARIA **combobox** pattern (arrow keys, Enter, Escape). Leaflet supports arrow-key panning and +/− zoom. Saved-place values on the map are focusable and labelled ("Saved place: Lisbon, 17°C, Overcast"); city values are display only, so they are not tab stops. In search, Escape first closes the list, then clears the text. Elsewhere it closes the details. A *skip link* jumps to My places, and focus rings are clearly visible.
-- **Screen readers.** In the details and My places, weather is never conveyed by colour alone: there is always a text label. Live regions announce search results and the loaded weather ("Athens: 22°C, Overcast"). When a place opens, focus moves to its heading. The SVG chart has a summary label plus a hidden data **table** with the same hourly data. The colour field is decorative; the range in view is announced in text, and the coldest and warmest spots are real buttons.
-- **Reduced motion.** With `prefers-reduced-motion`, rain, snow and lightning are removed, all other animations and transitions stop, Play is hidden, counting numbers show their final value at once, and the map jumps instead of flying.
-- **Counting numbers** animate an `aria-hidden` copy; screen readers get only the final value.
-- **Dropdown and menus** close with Escape (the My places dropdown first, then the open place) and on a click outside.
-- **Themes and contrast.** All colours are CSS variables with a dark and a light set. Temperature chips pick dark or white text by luminance. Text over photos sits on a darkening gradient.
+- **Mobile first:**
+  - one top row of controls on phones
+  - bottom sheets and a sliding drawer
+  - 44 px touch targets
+  - 16 px inputs, so iOS does not zoom in on focus
+- **Keyboard:**
+  - every feature works without a mouse
+  - the search follows the WAI-ARIA **combobox** pattern
+  - saved places on the map are focusable and labelled; city values are display only
+  - Escape closes things in a sensible order (search list, then the dropdown, then the details)
+  - a skip link and clearly visible focus rings
+- **Screen readers:**
+  - weather is never conveyed by colour alone
+  - live regions announce search results, the loaded weather and the map centre
+  - focus moves to a place's heading when it opens
+  - charts have a text summary, plus a hidden data table
+- **Reduced motion:** weather particles, animations, Play, rolling numbers, the glow and map fly-to are all switched off.
+- **Contrast:** dark and light themes built from CSS variables. Temperature chips pick dark or white text by luminance.
 
 ### Project structure
 
 ```
 src/
-  api/          cache.js (TTL + de-dup), openMeteo.js (forecast, batch, search), places.js (photos, own-location name)
-  components/   SearchBox, WeatherMap (data, colour field, readouts), DetailPanel, WeatherScene (photo + effects), HourlyChart, PlacesBar
-  data/         palette.js (temperature colour scale), cities.js (cities shown on the map)
-  hooks/        useAsync, useLocalStorage, useReducedMotion
-  utils/        grid.js, format.js, weatherCodes.js (+ unit tests)
+  api/              cache.js (TTL + de-dup), openMeteo.js (forecast, batched current + 24 h, search), places.js (photos, own-location name)
+  components/       WeatherMap (data, colour field, readouts, probe), DetailPanel, WeatherScene (photo + effects),
+                    HourlyChart, PlacesBar, PlacesChart, Legend, LayersMenu, TimeSlider, SearchBox
+  components/bits/  React Bits components (CountUp, ElasticSlider, SpotlightCard) + Glow wrapper, useFlip
+  data/             palette.js, layers.js, hourly.js, cities.js (map labels), places.js (~300 cities for names)
+  hooks/            useAsync, useLocalStorage, useReducedMotion
+  utils/            grid.js, format.js, weatherCodes.js (+ unit tests)
 ```
 
 ## 3. Incomplete requirements
 
 All requirements in the brief are implemented. Known limitations:
 
-
-- **Points picked on the map are named after the nearest city** from a bundled list of about 300 cities ("Near Ioannina, Greece"), not by reverse geocoding. Away from those cities (open sea, deserts) the name is approximate ("420 km from Tamanrasset, Algeria"), and the photo is of the nearest city (within 300 km) or of its country or region (up to about 1000 km, e.g. remote Canada or Greenland); on the open sea there is no photo.
-- **City photos** come from Wikipedia and a Commons search, so they are usually a landmark or skyline, but not always. A night photo search can occasionally return a street scene instead of a view.
-- **Accessibility** has been tested with the keyboard and visually at desktop and phone sizes. It has **not** yet been tested with a real screen reader (NVDA / VoiceOver) or with an automated audit (axe).
-- **Esri basemap tiles** are used under Esri's terms for this demo; a production app would need an ArcGIS account or a self-hosted style.
+- **Points on the map are named after the nearest city** in a bundled list, not by reverse geocoding. Far from those cities the name is approximate ("420 km from Tamanrasset, Algeria"). On the open sea there is no photo.
+- **Photos** come from Wikipedia and a Commons search, so they are usually a landmark or skyline, but not always (a night search can return a street scene).
+- **Very fast, repeated panning** can still reach the free tier's per-minute limit. The app then pauses the weather layer and retries by itself.
+- **Accessibility** was tested with the keyboard and visually at desktop and phone sizes, in both themes. It has **not** been tested with a real screen reader (NVDA / VoiceOver) or an axe audit.
+- **Esri basemap tiles** are used under Esri's terms for this demo. A production app would need an ArcGIS account or a self-hosted map style.
 
 ## 4. Next steps
 
-- **Shareable URLs:** put the selected place in the URL.
-- **Cache in `sessionStorage`**, so a reload does not repeat requests.
-- Screen-reader testing, an axe audit, end-to-end tests (Playwright), and component tests for the interactive pieces.
-- Offline support (PWA).
+1. Screen-reader testing (NVDA, VoiceOver) and an axe audit.
+2. End-to-end tests (Playwright) and component tests for the interactive pieces.
+3. Keep the cache in `sessionStorage`, so a reload does not repeat requests.
+4. More layers (cloud cover, pressure) and a longer timeline (several days), from the same batched request.
+5. Offline support (PWA).
 
 ## 5. Additional notes
 
-- **AI tools.** I built this with **Claude Code** as a pair programmer: architecture discussion, code generation and review. I decided the scope, the features and the trade-offs. I checked the result in the browser at desktop and mobile sizes, and I can walk through any part of the code.
-- **Time.** The assignment came with a deadline of about one working day, so I prioritised a complete, polished core experience over extra features. The *Next steps* list is what I would do next, in that order.
-- **Attribution.** Map © OpenStreetMap contributors. Weather data by Open-Meteo (CC BY 4.0). City photos via Wikipedia / Wikimedia Commons; each photo links to its source article.
+- **AI tools.** I iterated on the visual design with Claude's design tool and built the app with **Claude Code** as a pair programmer, for architecture discussion, code generation and review. I decided the scope, the features and the trade-offs, checked every change in the browser at desktop and phone sizes, and can walk through any part of the code.
+- **Time.** The assignment had a deadline of about one working day. I prioritised a complete, polished and accessible core over more features. *Next steps* is what I would do next.
+- **Attribution.** Map tiles © Esri; map data © OpenStreetMap contributors. Weather data by Open-Meteo (CC BY 4.0). Photos via Wikipedia / Wikimedia Commons; each photo links to its source. UI components from React Bits (© David Haz).

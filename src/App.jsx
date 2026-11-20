@@ -261,8 +261,8 @@ export default function App() {
 
   return (
     <div className={`app ${selected ? 'has-panel' : ''} ${placesOpen ? 'places-open' : ''}`}>
-      <a href="#places-title" className="skip-link">
-        Skip to my places
+      <a href="#map" className="skip-link">
+        Skip to the map
       </a>
       <h1 className="sr-only">Weather Explorer</h1>
       <main className="stage">
@@ -374,7 +374,7 @@ export default function App() {
         {overview.error && (
           <div className="paused glass" role="status" aria-live="polite">
             <strong>The weather layer is paused</strong>
-            <span>{overview.error.message} The map still works, and you can still search.</span>
+            <span>{overview.error.message} It will retry by itself in a minute; the map and search keep working.</span>
           </div>
         )}
 

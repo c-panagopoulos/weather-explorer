@@ -13,7 +13,10 @@ const MOVE_DEBOUNCE_MS = 300
 // The field is loaded and drawn 30% beyond each edge of the screen, so a
 // drag reveals real colours straight away instead of stretched old ones.
 const FIELD_PAD = 0.3
-const MAX_CITIES = 24
+const MAX_CITIES = 16
+// Open-Meteo counts every location in a batched request as one call
+// (free tier: 600 per minute), so keep each map move small.
+const RETRY_MS = 60 * 1000
 
 const TILES = {
   dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
@@ -48,17 +51,19 @@ function displayLonIn(bounds, lat, lon) {
 function WeatherData({ onData, onSummary, onLoading }) {
   const map = useMap()
   const timer = useRef(null)
+  const retry = useRef(null)
   const requestId = useRef(0)
 
   const load = () => {
     clearTimeout(timer.current)
+    clearTimeout(retry.current)
     timer.current = setTimeout(async () => {
       const b = map.getBounds()
       const padded = b.pad(FIELD_PAD)
       const small = map.getSize().x < 640
       const { points } = gridPoints(
         { south: padded.getSouth(), west: padded.getWest(), north: padded.getNorth(), east: padded.getEast() },
-        { maxPoints: small ? 45 : 90 },
+        { maxPoints: small ? 32 : 54 },
       )
       const cities = CITIES.filter((c) => displayLonIn(b, c.lat, c.lon) != null).slice(0, MAX_CITIES)
       const id = ++requestId.current
@@ -72,7 +77,11 @@ function WeatherData({ onData, onSummary, onLoading }) {
         // "In view" statistics only use the points actually on screen.
         onSummary({ cells: cells.filter((c) => b.contains([c.lat, c.displayLon])), error: null })
       } catch (error) {
-        if (id === requestId.current) onSummary({ cells: [], error })
+        if (id === requestId.current) {
+          onSummary({ cells: [], error })
+          // Rate limited or offline: try again by itself after a minute.
+          retry.current = setTimeout(load, RETRY_MS)
+        }
       } finally {
         if (id === requestId.current) onLoading(false)
       }
@@ -82,7 +91,10 @@ function WeatherData({ onData, onSummary, onLoading }) {
   useMapEvents({ moveend: load })
   useEffect(() => {
     load()
-    return () => clearTimeout(timer.current)
+    return () => {
+      clearTimeout(timer.current)
+      clearTimeout(retry.current)
+    }
   }, [])
   return null
 }
@@ -580,6 +592,7 @@ export default function WeatherMap({
   return (
     <div className={`map-wrap ${fresh ? 'is-fresh' : ''}`} aria-busy={loading}>
       <MapContainer
+        id="map"
         className="map"
         center={[40, 15]}
         zoom={isSmall ? 3 : 4}
