@@ -40,6 +40,30 @@ export default function PlacesBar({
   const [view, setView] = useState('list')
   const listRef = useRef(null)
   const reduced = useReducedMotion()
+
+  // Swipe / tap on the drawer handle (phones only; on desktop the handle is hidden).
+  const swipe = useRef(null)
+  const onHandleDown = (e) => {
+    if (e.target.closest('button')) return
+    swipe.current = { y: e.clientY, moved: false }
+    // Keep receiving the pointer even when the finger leaves the header mid-swipe.
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  const onHandleUp = (e) => {
+    const s = swipe.current
+    if (!s) return
+    const dy = e.clientY - s.y
+    if (Math.abs(dy) > 24) {
+      s.moved = true
+      if ((dy < 0 && !open) || (dy > 0 && open)) onToggle()
+    }
+  }
+  const onHandleClick = (e) => {
+    const s = swipe.current
+    swipe.current = null
+    if (s?.moved || e.target.closest('button')) return
+    if (window.matchMedia?.('(max-width: 899px)').matches) onToggle()
+  }
   const [forecasts, setForecasts] = useState({})
 
   const placesKey = places.map((p) => pointKey(p)).join('|')
@@ -84,6 +108,14 @@ export default function PlacesBar({
       data-obstacle={open ? '' : undefined}
       surface="var(--glass)"
     >
+      {/* Phone drawer: tap or swipe the handle / header to open or close it.
+          (Pointer convenience; the Compare / Hide button is the accessible control.) */}
+      <div
+        className="places__handle"
+        onPointerDown={onHandleDown}
+        onPointerUp={onHandleUp}
+        onClick={onHandleClick}
+      >
       <span className="places__grip" aria-hidden="true" />
       <div className="places__head">
         <div className="places__heading">
@@ -120,6 +152,8 @@ export default function PlacesBar({
             {open ? 'Hide' : places.length ? 'Compare' : 'Show'}
           </button>
         </div>
+      </div>
+
       </div>
 
       {/* Always rendered so the drawer can slide open and closed; inert while closed. */}

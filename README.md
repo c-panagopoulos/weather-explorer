@@ -25,7 +25,7 @@ Explore the weather anywhere in the world, like a TV weather forecast where you 
 - **Weather where you are** with *My location*.
 - **°C / °F**, remembered. **Dark by default**, with a light theme that follows the system.
 
-**Layout.** On desktop, search, location, units and a *My places* dropdown sit in the top bar. The legend is at the bottom left, the timeline is centred on the free map area, and the right side belongs to the open place. On phones the controls fit one top row, *My places* is a drawer that slides up, and the details open as a bottom sheet.
+**Layout.** On desktop, search, location, units and a *My places* dropdown sit in the top bar. The legend is at the bottom left, the timeline is centred on the free map area, and the right side belongs to the open place. On phones the controls fit one top row, *My places* is a drawer that slides up (tap or swipe its handle, or use Compare / Hide), and the details open as a bottom sheet.
 
 ## 1. Installation and setup
 
