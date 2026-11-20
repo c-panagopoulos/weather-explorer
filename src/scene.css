@@ -269,3 +269,29 @@
     display: none;
   }
 }
+
+/* Night with a day photo: darken and cool it so it reads as evening. */
+.scene--night:not(.scene--night-photo) .scene__photo {
+  filter: brightness(0.5) saturate(0.7) contrast(1.05);
+}
+/* A real night photo needs much less tint. */
+.scene--night-photo .scene__tint {
+  background: linear-gradient(180deg, rgba(5, 10, 35, 0.35), rgba(10, 20, 60, 0.1) 45%, rgba(0, 0, 0, 0.4));
+}
+.scene__credit {
+  max-width: calc(100% - 24px);
+  z-index: 2;
+}
+/* Credit sits under the subtitle, clear of the buttons and the big temperature. */
+.scene__credit {
+  top: 80px;
+  left: 20px;
+  right: auto;
+  background: rgba(0, 0, 0, 0.45);
+}
+@media (max-width: 899px) {
+  .scene__credit {
+    top: 82px;
+    left: 16px;
+  }
+}

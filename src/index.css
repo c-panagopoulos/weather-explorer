@@ -890,7 +890,7 @@ a {
   display: flex;
   align-items: flex-end;
   gap: 16px;
-  margin-top: 22px;
+  margin-top: 30px;
 }
 .now__temp {
   font-size: 112px;

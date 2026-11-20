@@ -6,7 +6,7 @@ Explore the weather anywhere in the world, like a TV weather forecast where you 
 
 - **See the whole picture first.** The map is covered with a smooth, colour-coded temperature field, in the style of a TV forecast. It follows you as you pan and zoom, so you can see how the weather changes from place to place. Your saved places and about 30 major cities show their values, placed so labels never overlap each other or sit under a panel. The *In view* chip shows the coldest and warmest spot on screen; tap either to open it.
 - **Dive into any place.** Search for a city, or tap anywhere on the map (including the open sea) to see current conditions, feels-like temperature, humidity, wind, sunrise and sunset, a 24-hour chart and a 7-day forecast with low–high range bars. A line compares it with your saved places ("6° warmer than Lisbon · 7° colder than Cairo"), and *Share link* copies a URL that reopens the same place and unit.
-- **See it, don't just read it.** For named places, the details open with a photo of the city from Wikipedia (Athens shows the Acropolis). The current weather is animated on top of the photo: rain, drizzle, snow, fog, drifting clouds, sunshine or lightning. Night darkens the scene.
+- **See it, don't just read it.** The details open with a photo of the place (Athens shows the Acropolis). The current weather is animated on top of it: rain, drizzle, snow, fog, drifting clouds, sunshine or lightning. **When it is night there, the scene uses a night photo** (Sydney Harbour Bridge lit up, Shinjuku at night) when one exists, and otherwise darkens the day photo. Points picked on the map borrow the photo of the nearest city.
 - **Build your own picture of the world's weather.** Save a place to add it to *My places*. Each place shows its temperature now, today's low and high on one shared scale, and the chance of rain. You can sort by warmest, coldest, A–Z or the order you added them, and removing a place can be undone. The list is kept in `localStorage`, so it is still there after a reload.
 - **Read the weather anywhere.** A probe follows the mouse and shows the interpolated temperature, the condition and the nearest place ("Near Ioannina, Greece"), named from a bundled list of about 300 cities with no network calls. With the keyboard, focus the map: a crosshair appears, the arrow keys pan, Enter opens the forecast and a live region reads the value out. On phones the ring stays in the centre and you drag the map under it; it snaps to nearby cities.
 - **Look ahead.** A 24-hour time slider (with Play) moves My places and the open place through the forecast; *My places* also has a **Chart** view with every place's next 24 hours in one chart.
@@ -54,7 +54,7 @@ Geolocation only works on `localhost` or over HTTPS, a browser rule. The live de
 
 - [Open-Meteo Forecast API](https://open-meteo.com/en/docs) for all weather data.
 - [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) for the search box.
-- [Wikipedia REST API](https://en.wikipedia.org/api/rest_v1/) (`page/summary`) for city photos. It is optional and falls back to a gradient that matches the weather.
+- [Wikipedia REST API](https://en.wikipedia.org/api/rest_v1/) (`page/summary`) and the [Wikimedia Commons API](https://commons.wikimedia.org/w/api.php) for city photos. The Wikipedia lead image is used by day, unless it is a collage, a portrait image or a map; then, and for night photos, one Commons search finds a landscape photo. Results are cached for a day, so a place costs at most two photo requests. If nothing is found, or an image fails to load, the scene falls back to a gradient that matches the weather.
 - [BigDataCloud client-side reverse geocoding](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api), used **only** to put a name on the user's own geolocation result. Open-Meteo has no reverse geocoding. If the call fails, the app shows "Your location".
 
 ### Staying within Open-Meteo's limits
@@ -96,8 +96,8 @@ All requirements in the brief are implemented. Known limitations:
 
 - **The time slider does not move the map's colour field** (see Next steps); it affects My places and the open place, whose hourly forecasts are already cached.
 
-- **Points picked on the map have no place name.** Open-Meteo has no reverse geocoding, and I did not want to send every click to a third-party service. Those points show coordinates and the local timezone, and use the gradient background instead of a photo.
-- **City photos** are Wikipedia's lead image for the city. It is usually a landmark or skyline, but not always.
+- **Points picked on the map are named after the nearest city** from a bundled list of about 300 cities ("Near Ioannina, Greece"), not by reverse geocoding. Away from those cities (open sea, deserts) the name is approximate ("420 km from Tamanrasset, Algeria"), and there is no photo beyond 150 km.
+- **City photos** come from Wikipedia and a Commons search, so they are usually a landmark or skyline, but not always. A night photo search can occasionally return a street scene instead of a view.
 - **Accessibility** has been tested with the keyboard and visually at desktop and phone sizes. It has **not** yet been tested with a real screen reader (NVDA / VoiceOver) or with an automated audit (axe).
 - **Esri basemap tiles** are used under Esri's terms for this demo; a production app would need an ArcGIS account or a self-hosted style.
 

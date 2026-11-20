@@ -13,7 +13,7 @@ import {
   toUnit,
 } from '../utils/format.js'
 import { tempCss } from '../data/palette.js'
-import { describeNearest } from '../data/places.js'
+import { describeNearest, nearestPlace } from '../data/places.js'
 import { hourLabel } from './TimeSlider.jsx'
 import WeatherScene from './WeatherScene.jsx'
 import HourlyChart from './HourlyChart.jsx'
@@ -55,6 +55,14 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
       (location.source === 'geo' ? ' · your location' : '')
     : describeNearest(location.lat, location.lon) || formatCoords(location.lat, location.lon)
 
+  // Points picked on the map borrow the photo of the nearest city (within 150 km).
+  const near = location.name ? null : nearestPlace(location.lat, location.lon)
+  const photoPlace = location.name
+    ? location
+    : near && near.km < 150
+      ? { name: near.place.name, admin1: '', country: near.place.country, nearby: true }
+      : null
+
   const current = data?.current
   const weather = current ? describeWeather(current.code, current.isDay) : null
   const today = data?.daily[0]
@@ -67,7 +75,7 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
   return (
     <aside className="panel" aria-labelledby="panel-title" aria-busy={loading} data-obstacle>
       <span className="panel__grip" aria-hidden="true" />
-      <WeatherScene place={location.name ? location : null} effect={weather?.effect ?? 'clear'} isDay={current?.isDay ?? true}>
+      <WeatherScene place={photoPlace} effect={weather?.effect ?? 'clear'} isDay={current ? current.isDay : null}>
         <div className="scene__top">
           <div className="scene__titles">
             <h2 id="panel-title" ref={headingRef} tabIndex={-1}>
