@@ -37,9 +37,11 @@ export default function Glow({ className, children, surface = 'var(--glass)', sh
     <SpotlightCard
       className={`${className} glow`}
       theme={light ? 'light' : 'dark'}
-      spotlightSize={260}
-      intensity={0.35}
-      borderGlow={0.5}
+      // A small, soft glow in the app's accent colour rather than white.
+      spotlightColor={light ? '#b85a14' : '#f0a35a'}
+      spotlightSize={140}
+      intensity={0.22}
+      borderGlow={0.35}
       style={{ '--spotlight-card-surface': surface, '--spotlight-card-shadow': shadow }}
       {...rest}
     >
