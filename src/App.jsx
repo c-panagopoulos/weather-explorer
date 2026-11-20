@@ -374,7 +374,10 @@ export default function App() {
         {overview.error && (
           <div className="paused glass" role="status" aria-live="polite">
             <strong>The weather layer is paused</strong>
-            <span>{overview.error.message} It will retry by itself in a minute; the map and search keep working.</span>
+            <span>
+              {overview.error.message.replace(' Please try again in a minute.', '')} It will retry by itself in a minute;
+              the map and search keep working.
+            </span>
           </div>
         )}
 
