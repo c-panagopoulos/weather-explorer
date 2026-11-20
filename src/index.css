@@ -2107,3 +2107,51 @@ button:active:not(:disabled) {
     text-align: center;
   }
 }
+
+/* Timeline: resulting clock time on the right */
+.slider__time {
+  flex: none;
+  min-width: 44px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+@media (min-width: 900px) {
+  .slider {
+    width: 390px;
+    left: calc(50% - 195px);
+  }
+  .has-panel .slider {
+    left: calc((100% - 452px) / 2 - 195px);
+  }
+}
+
+/* My places drawer: the body slides open (desktop dropdown is simply shown/hidden). */
+.places__drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--ease);
+}
+.places.is-open .places__drawer {
+  grid-template-rows: 1fr;
+}
+.places__drawer > .places__body {
+  min-height: 0;
+  overflow: hidden;
+}
+.places {
+  gap: 0;
+}
+.places__body {
+  padding-top: 8px;
+}
+@media (max-width: 899px) {
+  .places__grip {
+    margin-bottom: 8px;
+  }
+  /* The sheet itself no longer jumps in; only the drawer slides. */
+  .places.is-open {
+    animation: none;
+  }
+}

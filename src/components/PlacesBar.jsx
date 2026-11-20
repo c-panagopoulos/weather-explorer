@@ -123,7 +123,8 @@ export default function PlacesBar({
         </div>
       </div>
 
-      {open && (
+      {/* Always rendered so the drawer can slide open and closed; inert while closed. */}
+      <div className="places__drawer" inert={!open}>
         <div id="places-body" className="places__body">
           {places.length > 1 && (
             <div className="seg seg--sort" role="group" aria-label="Sort places">
@@ -256,7 +257,7 @@ export default function PlacesBar({
             </>
           )}
         </div>
-      )}
+      </div>
     </Glow>
   )
 }

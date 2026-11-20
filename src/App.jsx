@@ -11,7 +11,6 @@ import { formatCoords, formatTemp } from './utils/format.js'
 import { describeNearest, nearestName } from './data/places.js'
 import TimeSlider from './components/TimeSlider.jsx'
 import { LegendCard, LegendChip } from './components/Legend.jsx'
-import LayersMenu from './components/LayersMenu.jsx'
 
 // Stable id for a place: geocoding id when we have one, otherwise its rounded coordinates.
 const placeId = (loc) => (loc.id && !String(loc.id).startsWith('pt:') ? String(loc.id) : `pt:${pointKey(loc)}`)
@@ -340,7 +339,6 @@ export default function App() {
 
         <div className="mapbar mobile-only">
           <LegendChip open={chipOpen} onToggle={() => setChipOpen((o) => !o)} />
-          <LayersMenu />
         </div>
 
         <div className="desktop-only">
