@@ -8,6 +8,7 @@ import { formatTemp } from '../utils/format.js'
 import { tempRgb } from '../data/palette.js'
 import { CITIES } from '../data/cities.js'
 import { PLACES, describeNearest } from '../data/places.js'
+import { atHour } from '../data/hourly.js'
 
 const MOVE_DEBOUNCE_MS = 300
 // The field is loaded and drawn 30% beyond each edge of the screen, so a
@@ -93,11 +94,13 @@ function WeatherData({ onData, onSummary, onLoading }) {
  * in Leaflet's overlay pane, so it pans with the map and is redrawn when
  * movement ends. The old field stays visible until new data arrives.
  */
-function FieldLayer({ cells }) {
+function FieldLayer({ cells, hour }) {
   const map = useMap()
   const canvasRef = useRef(null)
   const cellsRef = useRef(cells)
   cellsRef.current = cells
+  const hourRef = useRef(hour)
+  hourRef.current = hour
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -123,7 +126,7 @@ function FieldLayer({ cells }) {
     const H = Math.ceil(size.y / S) + 2 * M
     const pts = data.map((c) => {
       const p = map.latLngToContainerPoint([c.lat, c.displayLon])
-      return [(p.x + ox) / S + M - 0.5, (p.y + oy) / S + M - 0.5, c.weather.temperature]
+      return [(p.x + ox) / S + M - 0.5, (p.y + oy) / S + M - 0.5, atHour(c.weather, hourRef.current).temperature]
     })
     const small = document.createElement('canvas')
     small.width = W
@@ -177,7 +180,7 @@ function FieldLayer({ cells }) {
 
   useEffect(() => {
     draw()
-  }, [cells, draw])
+  }, [cells, hour, draw])
 
   return null
 }
@@ -189,7 +192,7 @@ const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b
  * Labels are placed greedily (right, then left, otherwise dropped) so they never
  * overlap each other or any floating panel (elements marked data-obstacle).
  */
-function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey }) {
+function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey, hour }) {
   const map = useMap()
   const [items, setItems] = useState([])
 
@@ -248,14 +251,15 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey }) 
   }, [compute, layoutKey])
 
   return items.map((it) => {
-    const t = formatTemp(it.weather.temperature, unit)
-    const label = describeWeather(it.weather.code, it.weather.isDay).label
+    const w = atHour(it.weather, hour)
+    const t = formatTemp(w.temperature, unit)
+    const label = describeWeather(w.code, w.isDay).label
     const html = `<span class="ro ro--${it.side ?? 'none'}${it.saved ? ' ro--saved' : ''}"><span class="ro__dot"></span>${
       it.side
         ? `<span class="ro__label" style="width:${it.lw}px"><span class="ro__t">${t}</span><span class="ro__n">${escapeHtml(it.name)}</span></span>`
         : ''
     }</span>`
-    const aria = `${it.saved ? 'Saved place' : 'City'}: ${it.name}, ${formatTemp(it.weather.temperature, unit, { withUnit: true })}, ${label}`
+    const aria = `${it.saved ? 'Saved place' : 'City'}: ${it.name}, ${hour ? `in ${hour} hours ` : ''}${formatTemp(w.temperature, unit, { withUnit: true })}, ${label}`
     return (
       <Marker
         // Re-mount when the content changes so the aria-label lands on the new element.
@@ -280,7 +284,7 @@ function Readouts({ places, placesWeather, cities, unit, onSelect, layoutKey }) 
 }
 
 // Interpolated temperature (same IDW as the field) and the nearest cell's condition at a screen point.
-function sampleAt(map, cells, x, y) {
+function sampleAt(map, cells, x, y, hour) {
   let num = 0
   let den = 0
   let nearest = null
@@ -292,9 +296,10 @@ function sampleAt(map, cells, x, y) {
       nearestD = d2
       nearest = c
     }
-    if (d2 < 0.01) return { temperature: c.weather.temperature, cell: c }
+    const t = atHour(c.weather, hour).temperature
+    if (d2 < 0.01) return { temperature: t, cell: c }
     const w = 1 / (d2 * Math.sqrt(d2))
-    num += w * c.weather.temperature
+    num += w * t
     den += w
   }
   return { temperature: num / den, cell: nearest }
@@ -310,7 +315,7 @@ const SNAP_PX = 48
  * - touch (< 640px): the ring stays in the centre and the map is dragged under
  *   it; it snaps to a nearby city, and tapping it opens the forecast.
  */
-function Probe({ cells, unit, onSelect, touch }) {
+function Probe({ cells, unit, onSelect, touch, hour }) {
   const map = useMap()
   const [pointer, setPointer] = useState(null)
   const [kbd, setKbd] = useState(false)
@@ -349,8 +354,9 @@ function Probe({ cells, unit, onSelect, touch }) {
     if (!cells.length) return null
     const ll = map.containerPointToLatLng([x, y])
     const lon = L.Util.wrapNum(ll.lng, [-180, 180])
-    const { temperature, cell } = sampleAt(map, cells, x, y)
-    const cond = describeWeather(cell.weather.code, cell.weather.isDay).label
+    const { temperature, cell } = sampleAt(map, cells, x, y, hour)
+    const w = atHour(cell.weather, hour)
+    const cond = describeWeather(w.code, w.isDay).label
     const name = snapped ? `${snapped.name}, ${snapped.country}` : describeNearest(ll.lat, lon)
     return { lat: ll.lat, lon, temperature, cond, name }
   }
@@ -460,7 +466,10 @@ function Probe({ cells, unit, onSelect, touch }) {
             </span>
             <span className="probe__name">{info.name}</span>
             {mode !== 'touch' && (
-              <span className="probe__hint">{mode === 'kbd' ? 'Arrows pan · Enter for forecast' : 'Click for the forecast'}</span>
+              <span className="probe__hint">
+                {hour ? `In ${hour} h · ` : ''}
+                {mode === 'kbd' ? 'Arrows pan · Enter for forecast' : 'Click for the forecast'}
+              </span>
             )}
           </div>
         </div>
@@ -534,6 +543,7 @@ export default function WeatherMap({
   reducedMotion,
   layoutKey,
   probeHidden,
+  hour = 0,
 }) {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState({ cells: [], cities: [] })
@@ -563,9 +573,9 @@ export default function WeatherMap({
         <TileLayer key={scheme} url={TILES[scheme]} attribution={ATTRIBUTION} maxNativeZoom={16} />
         <ZoomControl position="bottomright" />
         <WeatherData onData={setData} onSummary={onSummary} onLoading={setLoading} />
-        <FieldLayer cells={data.cells} />
+        <FieldLayer cells={data.cells} hour={hour} />
         <ClickToExplore onSelect={onSelect} />
-        {!probeHidden && <Probe cells={data.cells} unit={unit} onSelect={onSelect} touch={isSmall} />}
+        {!probeHidden && <Probe cells={data.cells} unit={unit} onSelect={onSelect} touch={isSmall} hour={hour} />}
         <FlyToSelection selected={selected} reducedMotion={reducedMotion} />
         <Readouts
           places={places}
@@ -574,6 +584,7 @@ export default function WeatherMap({
           unit={unit}
           onSelect={onSelect}
           layoutKey={layoutKey}
+          hour={hour}
         />
         {selected && (
           <Marker

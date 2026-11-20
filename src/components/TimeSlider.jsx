@@ -10,8 +10,8 @@ const clock = (date) => date.toLocaleTimeString('en-GB', { hour: '2-digit', minu
  * A slim timeline for the next 24 hours, using React Bits' Elastic Slider
  * (role="slider" with arrow keys, Page Up/Down, Home/End, aria-valuetext and
  * a visible focus ring). Left: how many hours ahead; right: what time that
- * is on your clock. It drives My places and the open place (their forecasts
- * are already cached); the map field shows current conditions.
+ * is on your clock. It moves the whole picture: the map colours, city and
+ * place values, the probe and the open place.
  */
 export default function TimeSlider({ hour, onHour, playing, onTogglePlay, reducedMotion }) {
   // Keep the clock current while the page stays open.
@@ -42,7 +42,7 @@ export default function TimeSlider({ hour, onHour, playing, onTogglePlay, reduce
         stepSize={1}
         onChange={(v) => onHour(Math.round(v))}
         valuePosition="none"
-        ariaLabel="Forecast time for My places and the open place"
+        ariaLabel="Forecast time"
         formatValue={(v) => {
           const h = Math.round(v)
           return h ? `${h} hours from now, ${at(h)} your time` : `Now, ${at(0)}`

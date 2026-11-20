@@ -14,18 +14,18 @@ import {
 } from '../utils/format.js'
 import { tempCss } from '../data/palette.js'
 import { describeNearest, nearestPlace } from '../data/places.js'
-import { hourLabel } from './TimeSlider.jsx'
+import { atHour } from '../data/hourly.js'
 import WeatherScene from './WeatherScene.jsx'
 import CountUp from './bits/CountUp.jsx'
 import Glow from './bits/Glow.jsx'
 import HourlyChart from './HourlyChart.jsx'
 
 // "2° warmer than Lisbon · 9° colder than Cairo": the closest warmer and colder saved places.
-function compareLine(location, temperature, places, placesWeather, unit) {
+function compareLine(location, temperature, places, placesWeather, unit, hour) {
   const me = toUnit(temperature, unit)
   const others = places
     .filter((p) => p.id !== location.id)
-    .map((p) => ({ name: p.name, w: placesWeather.get(pointKey(p)) }))
+    .map((p) => ({ name: p.name, w: atHour(placesWeather.get(pointKey(p)), hour) }))
     .filter((o) => o.w)
     .map((o) => ({ name: o.name, d: Math.round(me - toUnit(o.w.temperature, unit)) }))
   const same = others.find((o) => o.d === 0)
@@ -66,10 +66,13 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
       : null
 
   const current = data?.current
-  const weather = current ? describeWeather(current.code, current.isDay) : null
-  const today = data?.daily[0]
-  const vs = current ? compareLine(location, current.temperature, places, placesWeather, unit) : ''
+  // With the time slider moved, the big number and condition show that hour.
   const at = hour > 0 ? data?.hourly[hour] : null
+  const shown = at ?? current
+  const weather = shown ? describeWeather(shown.code, shown.isDay) : null
+  const today = data?.daily[0]
+  const vs = shown ? compareLine(location, shown.temperature, places, placesWeather, unit, hour) : ''
+  const atClock = new Date(Date.now() + hour * 3600 * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   const weekMin = data ? Math.min(...data.daily.map((d) => d.min)) : 0
   const weekMax = data ? Math.max(...data.daily.map((d) => d.max)) : 1
   const pos = (t) => ((t - weekMin) / Math.max(weekMax - weekMin, 1)) * 100
@@ -113,13 +116,16 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
           </div>
         </div>
 
-        {current && (
+        {shown && (
           <div className="now">
             <span className="now__temp">
               <span aria-hidden="true">
-                <CountUp key={key} to={Math.round(toUnit(current.temperature, unit))} duration={0.6} trigger="load" suffix="°" />
+                <CountUp key={key} to={Math.round(toUnit(shown.temperature, unit))} duration={0.6} trigger="load" suffix="°" />
               </span>
-              <span className="sr-only">{formatTemp(current.temperature, unit, { withUnit: true })}</span>
+              <span className="sr-only">
+                {at ? `In ${hour} hours: ` : ''}
+                {formatTemp(shown.temperature, unit, { withUnit: true })}
+              </span>
             </span>
             <span className="now__meta">
               <span className="now__cond">{weather.label}</span>
@@ -131,7 +137,7 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
               {vs && <span className="now__vs">{vs}</span>}
               {at && (
                 <span className="now__at">
-                  {hourLabel(hour)}: {formatTemp(at.temperature, unit)}, {describeWeather(at.code, at.isDay).label}
+                  +{hour} h · {atClock} your time · now {formatTemp(current.temperature, unit)}
                 </span>
               )}
             </span>
@@ -229,7 +235,7 @@ export default function DetailPanel({ location, unit, isSaved, places, placesWea
       {/* Announce the result once it arrives. */}
       <p className="sr-only" role="status" aria-live="polite">
         {data &&
-          `${location.name ? placeLabel(location) : title}: ${formatTemp(current.temperature, unit, { withUnit: true })}, ${weather.label}.`}
+          `${location.name ? placeLabel(location) : title}: ${at ? `in ${hour} hours ` : ''}${formatTemp(shown.temperature, unit, { withUnit: true })}, ${weather.label}.`}
       </p>
     </Glow>
   )

@@ -9,7 +9,7 @@ Explore the weather anywhere in the world, like a TV weather forecast where you 
 - **See it, don't just read it.** The details open with a photo of the place (Athens shows the Acropolis). The current weather is animated on top of it: rain, drizzle, snow, fog, drifting clouds, sunshine or lightning. **When it is night there, the scene uses a night photo** (Sydney Harbour Bridge lit up, Shinjuku at night) when one exists, and otherwise darkens the day photo. Points picked on the map borrow the photo of the nearest city.
 - **Build your own picture of the world's weather.** Save a place to add it to *My places*. Each place shows its temperature now, today's low and high on one shared scale, and the chance of rain. You can sort by warmest, coldest, A–Z or the order you added them, and removing a place can be undone. The list is kept in `localStorage`, so it is still there after a reload.
 - **Read the weather anywhere.** A probe follows the mouse and shows the interpolated temperature, the condition and the nearest place ("Near Ioannina, Greece"), named from a bundled list of about 300 cities with no network calls. With the keyboard, focus the map: a crosshair appears, the arrow keys pan, Enter opens the forecast and a live region reads the value out. On phones the ring stays in the centre and you drag the map under it; it snaps to nearby cities.
-- **Look ahead.** A 24-hour time slider (with Play; it shows "+2 h" on the left and the resulting time on your clock, e.g. 17:16, on the right) moves My places and the open place through the forecast; *My places* also has a **Chart** view with every place's next 24 hours in one chart.
+- **Look ahead.** A 24-hour time slider (with Play; it shows "+2 h" on the left and the resulting time on your clock, e.g. 17:16, on the right) moves the whole picture through the next 24 hours: the map colours, city and place values, the probe, "In view" and the open place; *My places* also has a **Chart** view with every place's next 24 hours in one chart.
 - **Weather where you are.** *My location* uses the browser's geolocation and puts a city name on the result.
 - **Layout:** the map belongs to you. Search, location, units and a *My places* dropdown sit in the top bar; the legend sits bottom left; a slim timeline sits centred on the free map area; the right side is only for the place you open. On phones everything fits one top row, with a small legend chip below it, and My places is a drawer that slides up.
 - **Subtle motion:** panels slide or pop in, charts draw themselves, and temperatures count up to their value. All of it turns off with reduced motion.
@@ -76,7 +76,7 @@ Copied into `src/components/bits/`, plain-CSS variants, under React Bits' **MIT 
 
 The brief asks to be careful with requests. All weather calls go through one small cache layer (`src/api/cache.js`):
 
-- **Multi-location batching.** The map overview asks for up to 90 grid points (45 on phones), covering the screen plus a 30% margin so a drag shows real colours at once, **plus the visible cities**, in **one** request, using Open-Meteo's comma-separated coordinates. Saved places' current values come from one batched call as well.
+- **Multi-location batching.** The map overview asks for up to 90 grid points (45 on phones), covering the screen plus a 30% margin so a drag shows real colours at once, **plus the visible cities**, in **one** request, using Open-Meteo's comma-separated coordinates. The same request also returns the next 24 hours for every point (`forecast_hours=24`), so the time slider never makes a request. Saved places' current values come from one batched call as well.
 - **Snapped grid.** Grid points sit on fixed multiples of the grid step (for example every 2° over a country, 30° over the whole world), not on the screen. Small pans therefore land on points that are already cached, and only the new edge is fetched.
 - **15-minute TTL cache.** This matches how often Open-Meteo updates current conditions, so cached data is never staler than the source. Forecasts are cached per location, rounded to 2 decimals (about 1 km), so nearby clicks share an entry.
 - **In-flight de-duplication.** Two components asking for the same thing at the same moment share one request.
@@ -111,7 +111,6 @@ src/
 
 All requirements in the brief are implemented. Known limitations:
 
-- **The time slider does not move the map's colour field** (see Next steps); it affects My places and the open place, whose hourly forecasts are already cached.
 
 - **Points picked on the map are named after the nearest city** from a bundled list of about 300 cities ("Near Ioannina, Greece"), not by reverse geocoding. Away from those cities (open sea, deserts) the name is approximate ("420 km from Tamanrasset, Algeria"), and there is no photo beyond 150 km.
 - **City photos** come from Wikipedia and a Commons search, so they are usually a landmark or skyline, but not always. A night photo search can occasionally return a street scene instead of a view.
@@ -120,8 +119,7 @@ All requirements in the brief are implemented. Known limitations:
 
 ## 4. Next steps
 
-- **Time slider on the map itself:** today the slider moves My places and the open place. Driving the colour field and city values too needs hourly data in the batched grid request (same number of requests, larger response).
-- **Map layers:** switch the field between temperature, rain and wind, each with its own palette (same API change).
+- **Map layers:** switch the field between temperature, rain and wind, each with its own palette (add those variables to the same batched request).
 - **Shareable URLs:** put the selected place in the URL.
 - **Cache in `sessionStorage`**, so a reload does not repeat requests.
 - Screen-reader testing, an axe audit, end-to-end tests (Playwright), and component tests for the interactive pieces.

@@ -41,7 +41,6 @@ export function LegendCard({ open, onToggle, extremes, unit, hour, onOpenSpot })
           <p className="legend-card__explain">
             Blue means colder air, red means warmer. Values come from a grid of points and are blended in between.
           </p>
-          {hour > 0 && <p className="legend-card__explain">The map shows current conditions; the timeline moves your places.</p>}
           <hr />
           <span className="legend-card__label">In view right now</span>
           {extremes ? (

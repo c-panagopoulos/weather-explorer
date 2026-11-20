@@ -10,6 +10,7 @@ import { fetchCurrentBatch, pointKey } from './api/openMeteo.js'
 import { formatCoords, formatTemp } from './utils/format.js'
 import { describeNearest, nearestName } from './data/places.js'
 import TimeSlider from './components/TimeSlider.jsx'
+import { atHour } from './data/hourly.js'
 import { LegendCard, LegendChip } from './components/Legend.jsx'
 
 // Stable id for a place: geocoding id when we have one, otherwise its rounded coordinates.
@@ -235,7 +236,8 @@ export default function App() {
     if (isDesktop()) setPlacesOpen(false)
   }
 
-  const cells = overview.cells
+  // Cells at the slider hour, so "In view" follows the timeline too.
+  const cells = overview.cells.map((c) => ({ ...c, weather: atHour(c.weather, hour) }))
   const raw = cells.length
     ? cells.reduce(
         (acc, c) => ({
@@ -269,6 +271,7 @@ export default function App() {
           reducedMotion={reducedMotion}
           layoutKey={layoutKey}
           probeHidden={!!selected && !isDesktop()}
+          hour={hour}
         />
 
         <header className="topbar">

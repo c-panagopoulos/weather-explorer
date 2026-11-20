@@ -8,6 +8,7 @@ import { useFlip } from './bits/useFlip.js'
 import { chipColors, tempCss } from '../data/palette.js'
 import PlacesChart from './PlacesChart.jsx'
 import CountUp from './bits/CountUp.jsx'
+import { atHour } from '../data/hourly.js'
 
 const SORTS = [
   ['warm', 'Warmest', (a, b) => (b.w?.temperature ?? -999) - (a.w?.temperature ?? -999)],
@@ -57,10 +58,8 @@ export default function PlacesBar({
     .map((p) => {
       const key = pointKey(p)
       const f = forecasts[key]
-      const now = weather.get(key)
-      // With the time slider moved, values come from the place's hourly forecast.
-      const at = hour > 0 && f?.hourly[hour]
-      const w = at ? { temperature: at.temperature, code: at.code, isDay: at.isDay } : now
+      // With the time slider moved, values come from the hourly data of the batched request.
+      const w = atHour(weather.get(key), hour)
       return { ...p, w, today: f?.daily[0], hours: f?.hourly }
     })
     .sort(SORTS.find((s) => s[0] === sort)[2])
